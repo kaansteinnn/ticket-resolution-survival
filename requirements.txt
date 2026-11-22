@@ -1,0 +1,8 @@
+duckdb
+pandas
+lifelines
+scikit-survival
+streamlit
+plotly
+matplotlib
+pytest
