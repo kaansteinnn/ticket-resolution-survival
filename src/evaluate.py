@@ -160,10 +160,9 @@ def select_leaf_size(con) -> tuple[int, pd.DataFrame]:
                 "brier": daily["brier"].mean(),
                 "c_index": daily["c_index"].mean(),
                 "top10": daily["top10"].mean(),
-                "fit_seconds": round(time.time() - start),
             }
         )
-        print(f"  leaf {leaf:4d}: brier {rows[-1]['brier']:.4f}  c-index {rows[-1]['c_index']:.3f}  ({rows[-1]['fit_seconds']}s)")
+        print(f"  leaf {leaf:4d}: brier {rows[-1]['brier']:.4f}  c-index {rows[-1]['c_index']:.3f}  ({time.time() - start:.0f}s)")
     table = pd.DataFrame(rows)
     best = int(table.loc[table["brier"].idxmin(), "min_samples_leaf"])
     return best, table
@@ -239,8 +238,8 @@ def main() -> None:
     config.TABLES_DIR.mkdir(parents=True, exist_ok=True)
     selection.round(4).to_csv(config.TABLES_DIR / "model_selection.csv", index=False)
     daily.round(4).to_csv(config.TABLES_DIR / "model_daily.csv", index=False)
-    summary.round(4).to_csv(config.TABLES_DIR / "model_summary.csv", index=False)
-    summary_rest.round(4).to_csv(config.TABLES_DIR / "model_summary_without_biggest_late_team.csv", index=False)
+    summary.round(3).to_csv(config.TABLES_DIR / "model_summary.csv", index=False)
+    summary_rest.round(3).to_csv(config.TABLES_DIR / "model_summary_without_biggest_late_team.csv", index=False)
     calibration.round(4).to_csv(config.TABLES_DIR / "model_calibration.csv", index=False)
     cox.coefficients().round(4).to_csv(config.TABLES_DIR / "cox_coefficients.csv", index=False)
 
