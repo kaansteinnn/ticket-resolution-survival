@@ -1,0 +1,38 @@
+feature,hazard_ratio,ci_low,ci_high,p
+group=Group 9,0.1777,0.1372,0.2302,0.0
+group=Group 31,0.3566,0.2516,0.5053,0.0
+state=Awaiting other,0.4044,0.295,0.5544,0.0
+category=Category 34,0.5452,0.4306,0.6905,0.0
+group=Group 37,0.6021,0.4384,0.8269,0.0017
+group=Group 10,0.6576,0.5433,0.7959,0.0
+impact_level,0.7116,0.5466,0.9264,0.0115
+group=Group 6,0.7402,0.5412,1.0122,0.0596
+category=Category 45,0.8014,0.6716,0.9562,0.014
+state=Awaiting User Info,0.8058,0.735,0.8834,0.0
+state=Active,0.8297,0.7781,0.8846,0.0
+reopen_count,0.8376,0.5675,1.2363,0.3723
+group=Group 72,0.8538,0.7576,0.9623,0.0096
+priority_confirmed,0.8572,0.62,1.1852,0.3513
+group=Group 66,0.8758,0.7124,1.0768,0.2085
+group=Group 57,0.8819,0.6869,1.1322,0.324
+log_hours_since_update,0.9325,0.9117,0.9537,0.0
+category=Category 42,0.9354,0.8163,1.0719,0.3366
+log_age_h,0.9389,0.9105,0.9683,0.0001
+n_groups_seen,0.9477,0.8938,1.0048,0.0719
+category=Category 46,0.9605,0.8414,1.0964,0.5503
+has_assignee,0.9764,0.9174,1.0393,0.4536
+reassignment_count,0.9893,0.9543,1.0256,0.5582
+n_awaiting_updates,0.9908,0.9534,1.0296,0.6364
+priority_level,0.9995,0.7701,1.2971,0.9968
+category=Category 9,1.052,0.8954,1.236,0.5376
+urgency_level,1.0826,0.8271,1.417,0.5632
+group=Group 20,1.1054,0.9752,1.2529,0.1171
+category=Category 61,1.1423,1.0077,1.2949,0.0376
+category=Category 53,1.1537,1.04,1.2798,0.0069
+category=Category 26,1.2533,1.1583,1.3561,0.0
+not_by_phone,1.3768,1.1835,1.6018,0.0
+log_n_updates,1.5387,1.3786,1.7174,0.0
+group=Group 70,1.583,1.4451,1.7341,0.0
+group=Group 25,1.5898,1.4361,1.7599,0.0
+group=Group 24,1.6193,1.209,2.1689,0.0012
+group=none,1.6865,1.5514,1.8334,0.0

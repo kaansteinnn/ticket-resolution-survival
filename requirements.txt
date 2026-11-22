@@ -1,5 +1,6 @@
 duckdb
 pandas
+pyarrow
 lifelines
 scikit-survival
 streamlit
