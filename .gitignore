@@ -1,0 +1,17 @@
+# Veri depoya konmaz (CC BY 4.0, kaynak README'de)
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Editör / sistem
+.vscode/
+.DS_Store
