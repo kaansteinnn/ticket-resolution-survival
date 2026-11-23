@@ -1,5 +1,6 @@
-# Veri depoya konmaz (CC BY 4.0, kaynak README'de)
-data/
+# Ham veri depoya konmaz (CC BY 4.0, kaynak README'de). Yalnız kökteki data/ klasörü dışarıda;
+# demonun okuduğu türetilmiş tahmin dosyası (app/data/predictions.parquet) depodadır.
+/data/
 
 # Python
 .venv/
