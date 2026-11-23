@@ -44,8 +44,8 @@ METHOD_TR = {
     "Kaplan–Meier by age": "Yaşa göre Kaplan–Meier",
     "Cox": "Cox",
     "Random survival forest": "Sağkalım ormanı (demodaki model)",
-    "Late share of all past queues": "Model yok: geçmiş kuyrukların gecikme oranı × bugünkü kuyruk",
-    "Late share of the latest past queue": "Model yok: sonucu bilinen en son kuyruğun oranı × bugünkü kuyruk",
+    "Late share of all past queues": "Model yok: geçmiş gecikme oranı (tüm kuyruklar)",
+    "Late share of the latest past queue": "Model yok: geçmiş gecikme oranı (en son kuyruk)",
 }
 
 st.set_page_config(page_title="Bu iş ne zaman biter?", page_icon="⏳", layout="wide")
@@ -250,17 +250,20 @@ with tab_quality:
         pd.DataFrame(
             {
                 "Yöntem": workload.index.map(METHOD_TR),
-                "Tahmin (kayıt/gün)": workload["forecast_late_mean"],
-                "Gerçekleşen (kayıt/gün)": workload["actual_late_mean"],
-                "Ortalama şaşma (kayıt/gün)": workload["abs_error_mean"],
-                "Eksik tahmin edilen gün (31'de)": workload["days_forecast_too_low"],
+                "Tahmin": workload["forecast_late_mean"],
+                "Gerçekleşen": workload["actual_late_mean"],
+                "Ortalama şaşma": workload["abs_error_mean"],
+                "Eksik kaldığı gün": workload["days_forecast_too_low"],
             }
         ),
         hide_index=True,
         column_config={
-            c: st.column_config.NumberColumn(format="%.0f")
-            for c in ["Tahmin (kayıt/gün)", "Gerçekleşen (kayıt/gün)", "Ortalama şaşma (kayıt/gün)"]
+            c: st.column_config.NumberColumn(format="%.0f") for c in ["Tahmin", "Gerçekleşen", "Ortalama şaşma"]
         },
+    )
+    st.caption(
+        "Sayılar günlük ortalama kayıt sayısıdır. “Model yok” satırları, Mayıs'tan önce ölçülen gecikme oranını "
+        "o günkü kuyruğun büyüklüğüyle çarpar. Son sütun: 31 günün kaçında tahmin gerçeğin altında kaldı."
     )
     st.image(str(FIGURES / "workload_tr.png"))
     st.caption(
