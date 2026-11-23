@@ -40,6 +40,8 @@ LATE_DAYS = 7
 LATE_H = 24.0 * LATE_DAYS
 LATE_IDX = LATE_DAYS - 1  # position of the 7-day horizon in models.GRID_H
 TOP_SHARE = 0.10
+PAST_SHARE_ALL = "Late share of all past queues"
+PAST_SHARE_LATEST = "Late share of the latest past queue"
 
 PREDICTIONS_PATH = config.ROOT / "app" / "data" / "predictions.parquet"
 
@@ -101,6 +103,47 @@ def summarise(daily: pd.DataFrame, reference: str) -> pd.DataFrame:
         row["days_c_index_above_reference"] = int((d["c_index"] > ref["c_index"]).sum())
         row["days_top10_above_reference"] = int((d["top10"] > ref["top10"]).sum())
         rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def past_late_shares(train: pd.DataFrame) -> dict:
+    """The no-model forecast: the share of past queues that was late, applied to today's queue size.
+
+    Only training queues whose 7-day outcome was already known on 1 May can be used.
+    """
+    known = train[train["cutoff"] <= TRAIN_END - pd.Timedelta(days=LATE_DAYS)]
+    late = pd.Series(is_late(known), index=known["cutoff"].to_numpy())
+    return {PAST_SHARE_ALL: late.mean(), PAST_SHARE_LATEST: late.groupby(level=0).mean().iloc[-1]}
+
+
+def workload_table(daily: pd.DataFrame, past_shares: dict) -> pd.DataFrame:
+    """How many tickets of each daily queue will be late: every forecast against the actual count.
+
+    A model's forecast for a day is the sum of its late probabilities over that day's queue; the
+    no-model forecasts multiply the queue size by a late share measured before May. Methods that
+    only rank tickets give no forecast.
+    """
+    days = daily.drop_duplicates("cutoff")
+    actual = (days["tickets"] * days["late_share"]).to_numpy()
+    forecasts = {name: (share, days["tickets"].to_numpy() * share) for name, share in past_shares.items()}
+    for name, d in daily.dropna(subset=["mean_p_late"]).groupby("method", sort=False):
+        forecasts[name] = (np.nan, (d["tickets"] * d["mean_p_late"]).to_numpy())
+    rows = []
+    for name, (share, forecast) in forecasts.items():
+        error = forecast - actual
+        rows.append(
+            {
+                "method": name,
+                "days": len(error),
+                "fixed_late_share": share,
+                "actual_late_mean": actual.mean(),
+                "forecast_late_mean": forecast.mean(),
+                "abs_error_mean": np.abs(error).mean(),
+                "abs_error_min": np.abs(error).min(),
+                "abs_error_max": np.abs(error).max(),
+                "days_forecast_too_low": int((error < 0).sum()),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -241,6 +284,9 @@ def main() -> None:
     summary.round(3).to_csv(config.TABLES_DIR / "model_summary.csv", index=False)
     summary_rest.round(3).to_csv(config.TABLES_DIR / "model_summary_without_biggest_late_team.csv", index=False)
     calibration.round(4).to_csv(config.TABLES_DIR / "model_calibration.csv", index=False)
+    workload = workload_table(daily, past_late_shares(train))
+    decimals = {c: 3 if c == "fixed_late_share" else 1 for c in workload.columns if c not in ("method", "days")}
+    workload.round(decimals).to_csv(config.TABLES_DIR / "model_workload.csv", index=False)
     cox.coefficients().round(4).to_csv(config.TABLES_DIR / "cox_coefficients.csv", index=False)
 
     PREDICTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)

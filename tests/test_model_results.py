@@ -65,3 +65,45 @@ def test_resolved_only_regression_is_too_optimistic():
 def test_leaf_size_was_chosen_on_april_data():
     selection = pd.read_csv(TABLES / "model_selection.csv")
     assert selection.loc[selection["brier"].idxmin(), "min_samples_leaf"] == 120
+
+
+def test_forecast_of_how_many_tickets_will_be_late():
+    """Finding 4: survival methods miss by about 40 tickets a day; resolved-only regression by 282."""
+    w = pd.read_csv(TABLES / "model_workload.csv").set_index("method")
+    assert (w["days"] == 31).all()
+    assert w["actual_late_mean"].round().eq(788).all()
+    forecast = w["forecast_late_mean"].round().astype(int).to_dict()
+    miss = w["abs_error_mean"].round().astype(int).to_dict()
+    assert forecast == {
+        "Late share of all past queues": 662,
+        "Late share of the latest past queue": 719,
+        REGRESSION: 506,
+        "Kaplan–Meier by age": 778,
+        "Cox": 767,
+        FOREST: 777,
+    }
+    assert miss == {
+        "Late share of all past queues": 126,
+        "Late share of the latest past queue": 69,
+        REGRESSION: 282,
+        "Kaplan–Meier by age": 40,
+        "Cox": 44,
+        FOREST: 43,
+    }
+    assert w.loc[REGRESSION, "days_forecast_too_low"] == 31
+    assert w.loc["Late share of all past queues", "fixed_late_share"] == 0.552
+    assert w.loc["Late share of the latest past queue", "fixed_late_share"] == 0.6
+    # Reported, not hidden: the forest is no better at this than Kaplan–Meier without any ticket attribute.
+    assert w.loc[FOREST, "abs_error_mean"] > w.loc["Kaplan–Meier by age", "abs_error_mean"]
+
+
+def test_one_team_holds_a_fifth_of_the_queue_and_is_nearly_always_late():
+    path = TABLES.parent.parent / "app" / "data" / "predictions.parquet"
+    if not path.exists():
+        pytest.skip("run `python run_all.py` first")
+    df = pd.read_parquet(path)
+    team = df["assignment_group"] == "Group 9"
+    assert team.mean() == pytest.approx(0.189, abs=0.001)
+    assert df.loc[team, "actual_late"].mean() == pytest.approx(0.974, abs=0.001)
+    assert (team & df["actual_late"]).sum() / df["actual_late"].sum() == pytest.approx(0.281, abs=0.001)
+    assert df.loc[team, "number"].nunique() == 268 and df["number"].nunique() == 4078

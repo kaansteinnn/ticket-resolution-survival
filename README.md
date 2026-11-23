@@ -1,11 +1,25 @@
 # When will this ticket be done?
 
-Survival analysis on the support tickets of an IT company: 24,918 incidents, 141,712 logged updates
-(a ServiceNow export published on UCI). The project shows two common mistakes on real data and then
-predicts, for every open ticket, the chance it is resolved in the coming days.
+A support desk has about 1,200 tickets open every morning, and its manager keeps asking two things:
+*how long does our work take?* and *which of the tickets open right now will be late?* This project
+answers both on the tickets of an IT company (24,918 incidents, 141,712 logged updates; a ServiceNow
+export published on UCI), using survival analysis: the method that keeps unfinished work in the
+calculation instead of dropping it.
+
+In short:
+
+1. The usual report understates how long work takes, because it averages finished tickets only
+   (3.7 days shown against 9.1 days true on one date). Survival analysis recovers the right figure.
+2. "It has been open for 5 of the average 7 days, so 2 to go" is wrong: the longer a ticket has
+   waited, the longer it still waits.
+3. For choosing *which* open tickets to look at first, a model is barely better than the rule
+   "oldest first", and most of its edge is one team.
+4. For forecasting *how many* tickets will still be open in a week, the survival methods miss by
+   about 40 tickets a day out of 788; the same forecast learned from finished tickets only misses by 282.
 
 The demo (`streamlit run app/app.py`, interface in Turkish) goes back to any day of May 2016, ranks
 that morning's open tickets by their risk of being late, and can then reveal what really happened.
+A one-page summary in Turkish is in [reports/OZET.md](reports/OZET.md).
 
 ## Findings
 
@@ -101,6 +115,33 @@ calendar (on two cutoff days almost nothing was resolved in the following 24 hou
 public holidays; not verified). The forest's leaf size was the only setting tuned, on April data
 (`reports/tables/model_selection.csv`).
 
+### 4. Forecasting how many tickets will be late
+
+A manager planning the week needs a count more than a ranking: of the tickets open this morning, how
+many will still be open in 7 days? A model's forecast is the sum of its late probabilities over the
+queue. The no-model forecast multiplies the size of the queue by a late share measured before May.
+On average 788 tickets of a May queue turned out late (between 719 and 883).
+
+| Forecast for each of the 31 May queues | Mean forecast | Mean miss, tickets a day [smallest–largest] | Days the forecast was too low |
+|---|---|---|---|
+| No model: late share of all past queues (55.2%) × queue size | 662 | 126 [51–266] | 31 |
+| No model: late share of the latest queue with a known outcome (60.0%) × queue size | 719 | 69 [2–212] | 29 |
+| Regression on resolved tickets only | 506 | 282 [211–410] | 31 |
+| Kaplan–Meier by age (no ticket attributes) | 778 | 40 [3–139] | 14 |
+| Cox proportional hazards | 767 | 44 [2–158] | 17 |
+| Random survival forest | 777 | 43 [0–148] | 14 |
+
+![Late tickets per day: forecasts and outcome](reports/figures/workload_en.png)
+
+- **The three survival methods miss by about 40 tickets a day, 5% of the count.** The largest misses
+  (139 to 158) are in the slow week of 21–26 May described above.
+- **The forest is not better than Kaplan–Meier by age here.** The gain comes from keeping the tickets
+  that are still open in the calculation, not from the complexity of the model.
+- **Learning from resolved tickets only is the worst option, worse than using no model.** It is too
+  low on every one of the 31 days, by 282 tickets on average.
+- The no-model forecasts are too low as well, because the queue was getting slower: 55.2% late over
+  all March–April queues, 60.0% in the latest one whose outcome was known on 1 May, 65.9% in May.
+
 ## How open tickets are recreated
 
 Every ticket in the file is closed. To get "open" tickets, the clock is stopped at a cutoff time and
@@ -113,6 +154,24 @@ value on every row of a ticket, including the first one, so they are kept out of
 Resolution time is taken from the update log instead: the moment the ticket entered Resolved/Closed
 for the last time. Where the export's `resolved_at` exists (23,362 tickets; it is missing for 1,556),
 the two agree for 98.7%.
+
+## If this ran in production
+
+```
+ticket system ──nightly export of updates──▶ events table ──snapshot_at(today)──▶ open tickets as of this morning
+                                                                                        │
+              list of risky tickets, expected number late, per-ticket curve ◀── model ◀─┘
+                                                                                  ▲
+                              refit on a schedule; check last week's forecast ────┘
+```
+
+Every night the ticket system's new updates are appended to the events table. In the morning the same
+`snapshot_at` macro used here returns the open tickets as they stand, the fitted model scores them
+(seconds at this size), and the result goes to a dashboard like the demo. Two things would have to be
+added. First, a refit on a schedule: fitted once on 1 May, the model was too optimistic three weeks
+later; how often to refit was not tested here. Second, a standing check that compares each morning's
+forecast with what happened 7 days later, which is the table of finding 4 kept up to date. At 142
+thousand rows none of this needs more than one machine and a scheduler.
 
 ## Run it
 
@@ -131,10 +190,13 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `src/features.py`, `src/models.py`, `src/evaluate.py` | Model input, the six methods, the May test |
 | `app/app.py` | The demo; reads `app/data/predictions.parquet` (derived from the data, written by `run_all.py`) |
 | `reports/tables/`, `reports/figures/` | Outputs |
+| `reports/OZET.md` | One-page summary (Turkish) |
 | `tests/` | Dataset facts, leakage tests, methods and scoring, the demo |
 
 ## Data
 
 Amaral, C., Fantinato, M., Peres, S. (2018). *Incident management process enriched event log*.
 UCI Machine Learning Repository. DOI [10.24432/C57S4H](https://doi.org/10.24432/C57S4H). Licence CC BY 4.0.
-The data is downloaded on first run and is not stored in this repository.
+The raw data is downloaded on first run and is not stored in this repository. The one derived file that is
+stored, `app/data/predictions.parquet` (3 MB), holds the May 2016 queues with the model's predictions so
+that the demo opens without refitting; it is covered by the same licence and attribution.

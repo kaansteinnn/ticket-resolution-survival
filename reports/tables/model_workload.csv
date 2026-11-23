@@ -1,0 +1,7 @@
+method,days,fixed_late_share,actual_late_mean,forecast_late_mean,abs_error_mean,abs_error_min,abs_error_max,days_forecast_too_low
+Late share of all past queues,31,0.552,787.7,661.8,125.9,50.5,265.9,31
+Late share of the latest past queue,31,0.6,787.7,719.2,69.2,1.6,212.4,29
+Regression on resolved tickets,31,,787.7,505.6,282.1,211.0,409.8,31
+Kaplan–Meier by age,31,,787.7,778.3,39.6,3.3,138.5,14
+Cox,31,,787.7,767.2,44.2,2.2,158.0,17
+Random survival forest,31,,787.7,777.2,42.7,0.4,148.0,14

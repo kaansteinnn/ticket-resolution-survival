@@ -1,4 +1,4 @@
-"""Figures for the model comparison, drawn from the tables written by src/evaluate.py.
+"""Figures for the model comparison and the late-count forecast, drawn from the tables written by src/evaluate.py.
 
 Run: python -m src.analysis.model_report   (after python -m src.evaluate)
 """
@@ -14,6 +14,7 @@ from src import config, plotstyle
 FOREST = "Random survival forest"
 REGRESSION = "Regression on resolved tickets"
 SIMPLE = ["Oldest first", "Team's past late rate, then oldest", REGRESSION]
+PAST_SHARE = "Late share of all past queues"
 
 TEXT = {
     "tr": {
@@ -43,6 +44,12 @@ TEXT = {
         "observed": "Gerçekleşen",
         "months": "May",
         "decimal": ",",
+        "work_title": "Her sabahki kuyrukta 7 günde çözülmeyecek kayıt sayısı: tahminler ve gerçekleşen",
+        "work_y": "Kayıt sayısı",
+        "work_truth": "Gerçekleşen",
+        "work_forest": "Sağkalım ormanı",
+        "work_past": "Geçmişteki gecikme oranı × kuyruk",
+        "work_regression": "Çözülmüş kayıtlarla regresyon",
     },
     "en": {
         "methods": {
@@ -71,6 +78,12 @@ TEXT = {
         "observed": "Observed",
         "months": "May",
         "decimal": ".",
+        "work_title": "Tickets in each morning's queue that will not be resolved within 7 days: forecasts and outcome",
+        "work_y": "Tickets",
+        "work_truth": "What actually happened",
+        "work_forest": "Random survival forest",
+        "work_past": "Past late share × queue size",
+        "work_regression": "Regression on resolved tickets",
     },
 }
 
@@ -167,15 +180,45 @@ def plot_calibration(calibration: pd.DataFrame, daily: pd.DataFrame, lang: str) 
     plotstyle.save(fig, "calibration", lang)
 
 
+def plot_workload(daily: pd.DataFrame, workload: pd.DataFrame, lang: str) -> None:
+    """Day by day: how many tickets of the queue turned out late, against three forecasts of that count."""
+    t = TEXT[lang]
+    days = daily.drop_duplicates("cutoff")
+    x = pd.to_datetime(days["cutoff"])
+    tickets = days["tickets"].to_numpy()
+    past_share = workload.set_index("method").loc[PAST_SHARE, "fixed_late_share"]
+    forecast = lambda name: tickets * daily.loc[daily["method"] == name, "mean_p_late"].to_numpy()
+    series = [
+        (t["work_truth"], tickets * days["late_share"].to_numpy(), plotstyle.TRUTH, "-", 7),
+        (t["work_forest"], forecast(FOREST), plotstyle.SURVIVAL, "-", -7),
+        (t["work_past"], tickets * past_share, plotstyle.NAIVE, (0, (4, 3)), 0),
+        (t["work_regression"], forecast(REGRESSION), plotstyle.NAIVE, "-", 0),
+    ]
+    fig, ax = plt.subplots(figsize=(10, 4.4))
+    for label, y, color, style, nudge in series:  # nudge: the first two lines end close together
+        plotstyle.line(ax, x, y, color, label, markers=False, linestyle=style)
+        plotstyle.end_label(ax, x.iloc[-1], y[-1], label, dy=nudge)
+    ax.set_title(t["work_title"])
+    ax.set_ylabel(t["work_y"])
+    ax.set_ylim(0, 1000)
+    ax.set_xlim(x.min() - pd.Timedelta(hours=12), x.max() + pd.Timedelta(hours=12))
+    ax.xaxis.set_major_locator(mdates.DayLocator(bymonthday=[1, 8, 15, 22, 29]))
+    ax.xaxis.set_major_formatter(lambda v, _: f"{mdates.num2date(v).day} {t['months']}")
+    fig.tight_layout()
+    plotstyle.save(fig, "workload", lang)
+
+
 def main() -> None:
     print("Model figures")
     plotstyle.apply()
     summary = pd.read_csv(config.TABLES_DIR / "model_summary.csv")
     daily = pd.read_csv(config.TABLES_DIR / "model_daily.csv")
     calibration = pd.read_csv(config.TABLES_DIR / "model_calibration.csv")
+    workload = pd.read_csv(config.TABLES_DIR / "model_workload.csv")
     for lang in plotstyle.LANGS:
         plot_comparison(summary, daily, lang)
         plot_calibration(calibration, daily, lang)
+        plot_workload(daily, workload, lang)
 
 
 if __name__ == "__main__":
