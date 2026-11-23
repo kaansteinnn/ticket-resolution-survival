@@ -33,3 +33,19 @@ def test_app_renders_and_reveals_outcomes():
     app.toggle[0].set_value(True).run()
     assert not app.exception
     assert "Gerçekte çözülmeyen" in [m.label for m in app.metric]
+
+
+def test_demo_walkthrough_numbers_for_16_may():
+    """The demo opens on 16 May 2016; these are the numbers a walkthrough of that day shows."""
+    df = pd.read_parquet(PREDICTIONS)
+    day = df[df["cutoff"] == "2016-05-16"].sort_values("p_late", ascending=False, kind="stable")
+    k = round(0.10 * len(day))
+    assert (len(day), k) == (1239, 124)
+    assert round(day["p_late"].sum()) == 811 and day["actual_late"].sum() == 756
+    assert (day["p_late"] > 0.8).sum() == 294
+    assert day.head(k)["actual_late"].sum() == 124
+    assert day.sort_values("age_days", ascending=False, kind="stable").head(k)["actual_late"].sum() == 100
+    assert (day["assignment_group"] == "Group 9").sum() == 232
+    top = day.iloc[0]
+    assert top["assignment_group"] == "Group 9" and round(top["p_late"], 2) == 0.97
+    assert round(float(top["p_resolved_d30"]), 2) == 0.08

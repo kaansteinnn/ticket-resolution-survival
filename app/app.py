@@ -44,6 +44,8 @@ METHOD_TR = {
     "Kaplan–Meier by age": "Yaşa göre Kaplan–Meier",
     "Cox": "Cox",
     "Random survival forest": "Sağkalım ormanı (demodaki model)",
+    "Late share of all past queues": "Model yok: geçmiş kuyrukların gecikme oranı × bugünkü kuyruk",
+    "Late share of the latest past queue": "Model yok: sonucu bilinen en son kuyruğun oranı × bugünkü kuyruk",
 }
 
 st.set_page_config(page_title="Bu iş ne zaman biter?", page_icon="⏳", layout="wide")
@@ -113,6 +115,15 @@ st.caption(
     "kayıtlar, önümüzdeki 7 günde çözülmeme riskine göre sıralanır. Model yalnız 1 Mayıs 2016'ya kadar "
     "bilinenlerle kuruldu; Mayıs'ta olanları görmedi."
 )
+with st.expander("Bu ekran ne işe yarar?"):
+    st.markdown(
+        "Bir destek masasında her sabah yaklaşık 1.200 kayıt açık durur. Ekran, o sabah için üç soruya cevap verir:\n\n"
+        "1. **Bu hafta kaç kayıt elimizde kalacak?** Üstteki “Tahmin: 7 günde çözülmeyecek” sayısı.\n"
+        "2. **Hangi kayıtlar büyük ihtimalle gecikecek?** Gecikme riskine göre sıralı liste.\n"
+        "3. **Tek bir kayıt ne zaman biter?** Satıra tıklayınca açılan eğri: 7, 14 ve 30 gün içinde çözülme olasılığı.\n\n"
+        "“Gecikme” burada, seçilen günden sonraki 7 gün içinde çözülmemek demek. Soldaki "
+        "“Sonradan ne olduğunu göster” düğmesi, modelden gizlenen gerçek sonucu açar; tahmin onunla karşılaştırılır."
+    )
 
 with st.sidebar:
     st.header("Ayarlar")
@@ -224,16 +235,50 @@ with tab_quality:
         "Sıralama doğruluğu (C-index)": st.column_config.NumberColumn(format="%.3f"),
         "En riskli %10'da geciken": st.column_config.NumberColumn(format="%.3f"),
     }
-    st.subheader("Mayıs 2016'nın 31 günlük kuyruğunda ortalama sonuçlar")
+    workload = load_table("model_workload.csv").set_index("method")
+    forest_row = workload.loc["Random survival forest"]
+    regression_row = workload.loc["Regression on resolved tickets"]
+    st.subheader("1. Bu hafta kaç kayıt elimizde kalacak?")
+    st.markdown(
+        f"Mayıs'ın her sabahı için “bu kuyruktaki kayıtların kaçı 7 günde çözülmeyecek?” tahmini, sonradan "
+        f"gerçekleşen sayıyla karşılaştırıldı. Gerçekte günde ortalama **{forest_row['actual_late_mean']:.0f}** "
+        f"kayıt çözülmedi. Demodaki model ortalama **{forest_row['abs_error_mean']:.0f}** kayıt şaştı. Yalnız "
+        f"çözülmüş kayıtlardan öğrenen regresyon **{regression_row['abs_error_mean']:.0f}** kayıt şaştı ve 31 günün "
+        f"{regression_row['days_forecast_too_low']:.0f}'inde eksik tahmin etti: açık kalan işleri hiç görmediği için."
+    )
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Yöntem": workload.index.map(METHOD_TR),
+                "Tahmin (kayıt/gün)": workload["forecast_late_mean"],
+                "Gerçekleşen (kayıt/gün)": workload["actual_late_mean"],
+                "Ortalama şaşma (kayıt/gün)": workload["abs_error_mean"],
+                "Eksik tahmin edilen gün (31'de)": workload["days_forecast_too_low"],
+            }
+        ),
+        hide_index=True,
+        column_config={
+            c: st.column_config.NumberColumn(format="%.0f")
+            for c in ["Tahmin (kayıt/gün)", "Gerçekleşen (kayıt/gün)", "Ortalama şaşma (kayıt/gün)"]
+        },
+    )
+    st.image(str(FIGURES / "workload_tr.png"))
+    st.caption(
+        "Özelliklere hiç bakmayan en basit sağkalım yöntemi (yaşa göre Kaplan–Meier) bu soruda orman kadar iyi: "
+        "kazanç modelin karmaşıklığından değil, açık kalan işlerin hesaba katılmasından geliyor."
+    )
+
+    st.subheader("2. Hangi kayıtlar gecikecek?")
     st.markdown(
         f"Her gün için: o sabah açık olan kayıtlar sıralandı, sonra gerçekte ne olduğuna bakıldı. "
         f"Kuyruktaki kayıtların ortalama **{percent(late_share)}**'si 7 günde çözülmedi. "
-        f"C-index 0,5 = rastgele; Brier'de düşük olan iyi."
+        f"Sıralama doğruluğu (C-index): rastgele seçilen iki kayıttan hangisinin daha geç çözüleceğini doğru "
+        f"bilme oranı; 0,5 = yazı tura. Olasılık hatası (Brier): düşük olan iyi."
     )
     st.dataframe(quality_table(summary), hide_index=True, column_config=fmt)
     st.image(str(FIGURES / "model_comparison_tr.png"))
 
-    st.subheader("Sonucun ne kadarı tek bir ekip?")
+    st.subheader("3. Sonucun ne kadarı tek bir ekip?")
     st.markdown(
         "Modelin en riskli gördüğü %10'un tamamı tek bir ekibin (Group 9) kuyruğundan geliyor; bu ekip açık "
         "kayıtların yaklaşık beşte birini tutuyor ve kayıtlarının neredeyse hepsi gecikiyor. O ekip çıkarılınca "
@@ -241,7 +286,7 @@ with tab_quality:
     )
     st.dataframe(quality_table(rest), hide_index=True, column_config=fmt)
 
-    st.subheader("Olasılıklar tutuyor mu?")
+    st.subheader("4. Olasılıklar tutuyor mu?")
     st.image(str(FIGURES / "calibration_tr.png"))
     st.markdown(
         "Yalnız çözülmüş kayıtlarla kurulan regresyon fazla iyimser: açık kalanları hiç görmediği için "
