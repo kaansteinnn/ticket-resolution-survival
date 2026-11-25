@@ -26,6 +26,7 @@ FIGURES = ROOT / "reports" / "figures"
 LATE_DAYS = 7
 TOP_SHARE = 0.10
 CURVE_COLUMNS = [f"p_resolved_d{d:02d}" for d in range(1, 31)]
+FOREST = "Random survival forest"
 SERIES_BLUE = "#2a78d6"
 MUTED = "#898781"
 
@@ -40,6 +41,8 @@ STATE_TR = {
 METHOD_TR = {
     "Oldest first": "En eski kayıt önce",
     "Team's past late rate, then oldest": "Ekibin geçmiş gecikme oranı, sonra en eski",
+    "Past late rate by age band": "Model yok: yaşa göre geçmiş gecikme oranı",
+    "Gradient boosting classifier": "Sınıflandırıcı (gecikir / gecikmez)",
     "Regression on resolved tickets": "Çözülmüş kayıtlarla regresyon",
     "Kaplan–Meier by age": "Yaşa göre Kaplan–Meier",
     "Cox": "Cox",
@@ -113,7 +116,7 @@ st.title("Bu iş ne zaman biter?")
 st.caption(
     "Bir BT şirketinin destek kayıtları (UCI, 24.918 kayıt). Geçmişte bir güne gidin: o sabah açık olan "
     "kayıtlar, önümüzdeki 7 günde çözülmeme riskine göre sıralanır. Model yalnız 1 Mayıs 2016'ya kadar "
-    "bilinenlerle kuruldu; Mayıs'ta olanları görmedi."
+    "bilinenlerle kuruldu; Mayıs'ta kayıtların başına ne geldiğini görmedi."
 )
 with st.expander("Bu ekran ne işe yarar?"):
     st.markdown(
@@ -157,7 +160,9 @@ with tab_queue:
         tiles[1].metric("Tahmin: 7 günde çözülmeyecek", f"{expected_late:.0f}",
                         help="Kayıtların gecikme olasılıklarının toplamı.")
         if reveal:
-            tiles[2].metric("Gerçekte çözülmeyen", f"{int(queue['actual_late'].sum())}")
+            tiles[2].metric("Gerçekte çözülmeyen", f"{int(queue['actual_late'].sum())}",
+                            help="7 gün içinde son kez çözülmemiş kayıtlar. Çözülüp sonradan yeniden açılan "
+                                 "kayıt, son çözümüne göre sayılır.")
             k, hits = top_hits(queue, "p_late")
             _, hits_oldest = top_hits(queue, "age_days")
             tiles[3].metric(f"En riskli {k} kayıtta geciken", f"{hits}",
@@ -217,34 +222,50 @@ with tab_queue:
 
 with tab_quality:
     summary = load_table("model_summary.csv")
-    rest = load_table("model_summary_without_biggest_late_team.csv")
     daily = load_table("model_daily.csv")
+    workload = load_table("model_workload.csv").set_index("method")
+    open_check = load_table("check_open_tickets.csv")
+    without_team = load_table("check_without_team.csv")
+    new_tickets = load_table("check_new_tickets.csv")
+    intervals = load_table("check_intervals.csv")
+    calibration = load_table("check_calibration.csv")
+    retraining = load_table("check_retraining.csv")
     late_share = daily.drop_duplicates("cutoff")["late_share"].mean()
 
-    def quality_table(source: pd.DataFrame) -> pd.DataFrame:
+    def num(value: float, digits: int = 3) -> str:
+        return f"{value:.{digits}f}".replace(".", ",")
+
+    def quality_table(source: pd.DataFrame, suffix: str = "_mean") -> pd.DataFrame:
         return pd.DataFrame(
             {
                 "Yöntem": source["method"].map(METHOD_TR),
-                "Sıralama doğruluğu (C-index)": source["c_index_mean"],
-                "En riskli %10'da geciken": source["top10_mean"],
-                "Olasılık hatası (Brier)": source["brier_mean"].map(lambda v: "olasılık vermez" if pd.isna(v) else f"{v:.3f}"),
+                "Sıralama doğruluğu (C-index)": source[f"c_index{suffix}"],
+                "En riskli %10'da geciken": source[f"top10{suffix}"],
+                "Olasılık hatası (Brier)": source[f"brier{suffix}"].map(lambda v: "olasılık vermez" if pd.isna(v) else f"{v:.3f}"),
             }
         )
+
+    def interval(scope: str, quantity: str, metric: str) -> pd.Series:
+        rows = intervals[(intervals["scope"] == scope) & (intervals["quantity"] == quantity) & (intervals["metric"] == metric)]
+        return rows.iloc[0]
 
     fmt = {
         "Sıralama doğruluğu (C-index)": st.column_config.NumberColumn(format="%.3f"),
         "En riskli %10'da geciken": st.column_config.NumberColumn(format="%.3f"),
     }
-    workload = load_table("model_workload.csv").set_index("method")
-    forest_row = workload.loc["Random survival forest"]
+    forest_row = workload.loc[FOREST]
     regression_row = workload.loc["Regression on resolved tickets"]
+    forest_count = interval("All tickets", FOREST, "count_error")
     st.subheader("1. Bu hafta kaç kayıt elimizde kalacak?")
     st.markdown(
-        f"Mayıs'ın her sabahı için “bu kuyruktaki kayıtların kaçı 7 günde çözülmeyecek?” tahmini, sonradan "
+        f"Mayıs'ın her günü için “bu kuyruktaki kayıtların kaçı 7 günde çözülmeyecek?” tahmini, sonradan "
         f"gerçekleşen sayıyla karşılaştırıldı. Gerçekte günde ortalama **{forest_row['actual_late_mean']:.0f}** "
-        f"kayıt çözülmedi. Demodaki model ortalama **{forest_row['abs_error_mean']:.0f}** kayıt şaştı. Yalnız "
-        f"çözülmüş kayıtlardan öğrenen regresyon **{regression_row['abs_error_mean']:.0f}** kayıt şaştı ve 31 günün "
-        f"{regression_row['days_forecast_too_low']:.0f}'inde eksik tahmin etti: açık kalan işleri hiç görmediği için."
+        f"kayıt çözülmedi. Demodaki model ortalama **{forest_row['abs_error_mean']:.0f}** kayıt şaştı "
+        f"(%95 aralık {forest_count['lo']:.0f}–{forest_count['hi']:.0f}). Kayıtların özelliklerine hiç bakmayan "
+        f"Kaplan–Meier **{workload.loc['Kaplan–Meier by age', 'abs_error_mean']:.0f}**, geçmişteki gecikme "
+        f"oranını yaşa göre uygulayan basit hesap **{workload.loc['Past late rate by age band', 'abs_error_mean']:.0f}**, "
+        f"yalnız çözülmüş kayıtlardan öğrenen regresyon **{regression_row['abs_error_mean']:.0f}** kayıt şaştı; "
+        f"regresyon 31 günün {regression_row['days_forecast_too_low']:.0f}'inde eksik tahmin etti."
     )
     st.dataframe(
         pd.DataFrame(
@@ -263,17 +284,32 @@ with tab_quality:
     )
     st.caption(
         "Sayılar günlük ortalama kayıt sayısıdır. “Model yok” satırları, Mayıs'tan önce ölçülen gecikme oranını "
-        "o günkü kuyruğun büyüklüğüyle çarpar. Son sütun: 31 günün kaçında tahmin gerçeğin altında kaldı."
+        "o günkü kuyruğun büyüklüğüyle çarpar. Son sütun: 31 günün kaçında tahmin gerçeğin altında kaldı. "
+        "Aralık, kayıtlar yeniden örneklenerek hesaplandı; aynı kayıt birçok günün kuyruğunda yer aldığı için "
+        "günler birbirinden bağımsız değildir."
     )
     st.image(str(FIGURES / "workload_tr.png"))
+
+    all_rows, resolved_rows, random_rows = open_check.iloc[0], open_check.iloc[1], open_check.iloc[2:]
+    st.subheader("2. Belirleyici olan: açık işleri hesaptan atmamak")
+    st.markdown(
+        f"Aynı sınıflandırıcı üç ayrı eğitim kümesiyle kuruldu. 7 günlük sonucu bilinen bütün satırlarla günde "
+        f"**{all_rows['count_error']:.0f}** kayıt şaştı (olasılık hatası {num(all_rows['brier'])}). 1 Mayıs'ta hâlâ açık "
+        f"olan kayıtların satırları atılınca **{resolved_rows['count_error']:.0f}** kayıt şaştı "
+        f"({num(resolved_rows['brier'])}). Aynı sayıda satır rastgele atılınca hata değişmedi "
+        f"(üç denemede ortalama {random_rows['count_error'].mean():.0f} kayıt): bozulmanın nedeni "
+        f"satırların azalması değil, hangi satırların atıldığı."
+    )
+    st.image(str(FIGURES / "open_tickets_tr.png"))
     st.caption(
-        "Özelliklere hiç bakmayan en basit sağkalım yöntemi (yaşa göre Kaplan–Meier) bu soruda orman kadar iyi: "
-        "kazanç modelin karmaşıklığından değil, açık kalan işlerin hesaba katılmasından geliyor."
+        "Bu soru için sağkalım modeli şart değil: “7 günde çözülür mü?” sorusunu doğrudan öğrenen sıradan bir "
+        "sınıflandırıcı, sağkalım ormanıyla aynı sonucu veriyor (aşağıdaki tablo). Şart olan, açık kalan işlerin "
+        "eğitimden atılmaması."
     )
 
-    st.subheader("2. Hangi kayıtlar gecikecek?")
+    st.subheader("3. Hangi kayıtlar gecikecek?")
     st.markdown(
-        f"Her gün için: o sabah açık olan kayıtlar sıralandı, sonra gerçekte ne olduğuna bakıldı. "
+        f"Her gün için: o gün açık olan kayıtlar sıralandı, sonra gerçekte ne olduğuna bakıldı. "
         f"Kuyruktaki kayıtların ortalama **{percent(late_share)}**'si 7 günde çözülmedi. "
         f"Sıralama doğruluğu (C-index): rastgele seçilen iki kayıttan hangisinin daha geç çözüleceğini doğru "
         f"bilme oranı; 0,5 = yazı tura. Olasılık hatası (Brier): düşük olan iyi."
@@ -281,27 +317,60 @@ with tab_quality:
     st.dataframe(quality_table(summary), hide_index=True, column_config=fmt)
     st.image(str(FIGURES / "model_comparison_tr.png"))
 
-    st.subheader("3. Sonucun ne kadarı tek bir ekip?")
+    team_rows = without_team.set_index("method")
+    team_gap = intervals[intervals["scope"].str.startswith("Without")]
+    team_gap = team_gap[(team_gap["quantity"] == f"{FOREST} minus Oldest first") & (team_gap["metric"] == "c_index")].iloc[0]
+    fresh = new_tickets[new_tickets["tickets"] == "Never in a training queue"].set_index("method")
+    st.subheader("4. Sonucun ne kadarı tek bir ekip?")
     st.markdown(
-        "Modelin en riskli gördüğü %10'un tamamı tek bir ekibin (Group 9) kuyruğundan geliyor; bu ekip açık "
-        "kayıtların yaklaşık beşte birini tutuyor ve kayıtlarının neredeyse hepsi gecikiyor. O ekip çıkarılınca "
-        "model, “en eski kayıt önce” kuralına sıralamada ancak denk; farkı olasılık verebilmesi."
+        f"Modelin en riskli gördüğü %10'un tamamı tek bir ekibin (Group 9) kuyruğundan geliyor; bu ekip açık "
+        f"kayıtların yaklaşık beşte birini tutuyor ve kayıtlarının neredeyse hepsi gecikiyor. Ekip hem eğitimden hem "
+        f"sınamadan çıkarılıp bütün yöntemler yeniden kurulunca sağkalım ormanının sıralama doğruluğu "
+        f"**{num(team_rows.loc[FOREST, 'c_index'])}**, “en eski kayıt önce” kuralınınki "
+        f"**{num(team_rows.loc['Oldest first', 'c_index'])}** (fark {num(team_gap['value'])}; %95 aralık "
+        f"{num(team_gap['lo'])} ile {num(team_gap['hi'])} arası). Yani bu ekip dışında model, basit kuralı sıralamada "
+        f"geçemiyor."
     )
-    st.dataframe(quality_table(rest), hide_index=True, column_config=fmt)
+    st.dataframe(quality_table(without_team, suffix=""), hide_index=True, column_config=fmt)
+    seen_before = int(new_tickets.loc[new_tickets["tickets"] == "Also in a training queue", "n_tickets"].iloc[0])
+    st.caption(
+        f"Mayıs kuyruklarındaki 4.078 kaydın {seen_before:,} tanesi".replace(",", ".")
+        + " Nisan'da da açıktı ve eğitim verisinde yer alıyor (sonuçları değil, o günkü halleri). Eğitimde hiç "
+        f"görülmemiş kayıtlarda ormanın sıralama doğruluğu {num(fresh.loc[FOREST, 'c_index'], 2)}, "
+        f"“en eski kayıt önce” kuralınınki {num(fresh.loc['Oldest first', 'c_index'], 2)}."
+    )
 
-    st.subheader("4. Olasılıklar tutuyor mu?")
+    slide = retraining[(retraining["period"] == "21-26 May") & (retraining["method"] == FOREST)].set_index("training")
+    month = retraining[(retraining["period"] == "1-31 May") & (retraining["method"] == FOREST)].set_index("training")
+    teams = calibration[calibration["by"] == "team"].head(5).copy()  # the five teams with most rows
+    teams["gap"] = (teams["predicted_late"] - teams["actual_late"]).abs()
+    worst = teams.sort_values("gap", ascending=False).iloc[0]
+    st.subheader("5. Olasılıklar tutuyor mu?")
     st.image(str(FIGURES / "calibration_tr.png"))
     st.markdown(
-        "Yalnız çözülmüş kayıtlarla kurulan regresyon fazla iyimser: açık kalanları hiç görmediği için "
-        "çözülme olasılığını olduğundan yüksek veriyor. Sağkalım ormanı ayın büyük kısmında gerçeğe yakın; "
-        "Mayıs'ın son haftasında işler yavaşlayınca o da iyimser kalıyor."
+        f"Ortalamada evet, her yerde değil. Yalnız çözülmüş kayıtlarla kurulan regresyon fazla iyimser. Sağkalım "
+        f"ormanı ayın büyük kısmında gerçeğe yakın; Mayıs'ın son haftasında işler yavaşlayınca o da iyimser kalıyor. "
+        f"Modeli her hafta yeniden kurmak ayın ortalama hatasını {month.loc['Once, on 1 May', 'count_error']:.0f} "
+        f"kayıttan {month.loc['Every week', 'count_error']:.0f} kayda, 21–26 Mayıs'taki hatayı "
+        f"{slide.loc['Once, on 1 May', 'count_error']:.0f} kayıttan {slide.loc['Every week', 'count_error']:.0f} kayda "
+        f"indirdi; iyimserlik sürdü. Ekip bazında da sapma var: en büyük beş ekipten {worst['group']} için model kayıtların "
+        f"{percent(worst['predicted_late'])}'inin gecikeceğini söyledi, {percent(worst['actual_late'])}'i gecikti."
     )
 
 with tab_findings:
     st.subheader("1. Çözülmüş kayıtlardan hesaplanan ortalama, işlerin ne kadar sürdüğünü olduğundan kısa gösterir")
     st.image(str(FIGURES / "mean_trap_tr.png"))
+    st.caption(
+        "Doğru ortalama o gün hesaplanamaz: en uzun süren işler henüz bitmemiştir. Açık kayıtları da sayan "
+        "Kaplan–Meier yöntemiyle hesaplanabilen şey ortanca ve yüzdeliklerdir; ortadaki grafikte mavi çizgi "
+        "gerçekleşenin üstüne oturuyor."
+    )
     st.subheader("2. “Ortalama 7 gün, 5 gündür açık, 2 günü kaldı” mantığı yanlış")
     st.image(str(FIGURES / "waiting_tr.png"))
+    st.caption(
+        "Grafik, uzun süredir açık duran kayıtların tipik olarak daha da uzun süre açık kaldığını gösterir; "
+        "neden uzun sürdüklerini göstermez."
+    )
 
 st.divider()
 st.caption(
