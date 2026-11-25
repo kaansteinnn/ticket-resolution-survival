@@ -20,5 +20,9 @@ DATA_URL = (
     "incident+management+process+enriched+event+log.zip"
 )
 
+# The team that holds the largest backlog of late tickets. src/evaluate.py finds it from the training
+# data; it is named here so the descriptive analyses can be repeated without it (a test checks the two agree).
+BIGGEST_LATE_TEAM = "Group 9"
+
 # SQL files are run in this order to build the database.
 SQL_FILES = ["01_events.sql", "02_incidents.sql", "03_snapshot.sql"]

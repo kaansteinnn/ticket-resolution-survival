@@ -1,0 +1,4 @@
+tickets,n,still_open_1d,median_remaining_1d,still_open_7d,median_remaining_7d,still_open_28d,median_remaining_28d
+All tickets,24918,11228,5.608,5286,7.107,1235,26.976
+Never handled by Group 9,24464,10791,5.156,4888,6.796,951,18.128
+Not resolved in a batch (5+ tickets in one minute),24814,11181,5.633,5271,7.105,1233,26.988

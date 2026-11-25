@@ -7,8 +7,13 @@ three ways:
   survival  - Kaplan-Meier, which also counts the still-open tickets ("open for at least x days")
   truth     - what those same tickets turned out to take, read from the rest of the file
 
+The mean itself cannot be estimated on the day: the slowest tickets are still open and nobody
+knows yet how long they will take. What can be estimated are the median and other percentiles, and
+the share resolved within a given number of days.
+
 A second table looks at one day's dashboard broken down by opening week: recent weeks look fast
-only because their slow tickets have not been resolved yet.
+only because their slow tickets have not been resolved yet. A third repeats the weekly table without
+the tickets of the one team that holds most of the long-running work.
 
 Run: python -m src.analysis.mean_trap
 """
@@ -34,11 +39,20 @@ def km_quantile(km: KaplanMeierFitter, q: float) -> float:
     return float(km.percentile(1 - q))
 
 
-def weekly_table(con) -> pd.DataFrame:
+def km_share_resolved(km: KaplanMeierFitter, days: float) -> float:
+    """Share resolved within `days`: one minus the step curve at the last event time <= `days`."""
+    curve = km.survival_function_.iloc[:, 0]
+    return 1.0 - float(curve[curve.index <= days].iloc[-1])
+
+
+def weekly_table(con, only: set[str] | None = None) -> pd.DataFrame:
+    """One row per Monday. `only` restricts the calculation to those ticket numbers."""
     truth = db.incidents(con).set_index("number")["duration_h"] / HOURS_PER_DAY
     rows = []
     for cutoff in CUTOFFS:
         snap = db.snapshot(con, cutoff)
+        if only is not None:
+            snap = snap[snap["number"].isin(only)]
         days = snap["duration_h"] / HOURS_PER_DAY
         resolved = snap["resolved"]
         true_days = truth.loc[snap["number"]]
@@ -65,6 +79,9 @@ def weekly_table(con) -> pd.DataFrame:
                 "naive_p90": days[resolved].quantile(0.90),
                 "km_p90": km_quantile(km, 0.90),
                 "true_p90": true_days.quantile(0.90),
+                "naive_within_7d": (days[resolved] <= 7).mean(),
+                "km_within_7d": km_share_resolved(km, 7.0),
+                "true_within_7d": (true_days <= 7).mean(),
             }
         )
     return pd.DataFrame(rows).replace([np.inf, -np.inf], np.nan)
@@ -199,18 +216,22 @@ def main() -> None:
     con = db.connect()
     weekly = weekly_table(con)
     by_week = opening_week_table(con)
+    without_team = weekly_table(con, only=db.never_handled_by(con, config.BIGGEST_LATE_TEAM))
     con.close()
 
     config.TABLES_DIR.mkdir(parents=True, exist_ok=True)
     weekly.round(3).to_csv(config.TABLES_DIR / "mean_trap_weekly.csv", index=False)
     by_week.round(3).to_csv(config.TABLES_DIR / "mean_trap_by_opening_week.csv", index=False)
+    without_team.round(3).to_csv(config.TABLES_DIR / "mean_trap_weekly_without_team.csv", index=False)
     for lang in plotstyle.LANGS:
         plot_weekly(weekly, lang)
         plot_opening_week(by_week, lang)
 
     cols = ["cutoff", "open_share", "naive_mean", "true_mean", "naive_median", "km_median", "true_median",
-            "naive_p90", "km_p90", "true_p90"]
+            "naive_p90", "km_p90", "true_p90", "naive_within_7d", "km_within_7d", "true_within_7d"]
     print(weekly[cols].round(2).to_string(index=False))
+    print(f"without tickets ever handled by {config.BIGGEST_LATE_TEAM}:")
+    print(without_team[cols].round(2).to_string(index=False))
     print(by_week.round(2).to_string(index=False))
 
 

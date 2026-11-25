@@ -5,6 +5,13 @@ Here we measure the opposite directly: among tickets still open after `a` days, 
 they take? Every ticket in the file is eventually resolved, so this is a plain count on the complete
 data (no model); intervals are 95% percentile bootstrap over tickets.
 
+This describes which tickets are left in an old queue. It does not show why they take long, or that
+waiting itself makes a ticket slower.
+
+Two things could produce the same picture without saying anything about the work, so both are checked:
+one team holding most of the long-running tickets, and resolutions being entered in batches on a
+calendar rhythm (say, once a week).
+
 Run: python -m src.analysis.waiting
 """
 
@@ -54,6 +61,48 @@ def waiting_table(durations: np.ndarray) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+SUBSET_AGES = [1, 7, 28]
+BATCH_SIZE = 5  # a minute in which this many tickets were resolved counts as a batch
+WEEK_H = 168.0
+
+
+def subsets_table(tickets: pd.DataFrame, never_team: set[str]) -> pd.DataFrame:
+    """Median remaining time at 1, 7 and 28 days, for all tickets and for two subsets."""
+    per_minute = tickets.groupby("resolved_time")["number"].transform("size")
+    subsets = {
+        "All tickets": np.ones(len(tickets), dtype=bool),
+        f"Never handled by {config.BIGGEST_LATE_TEAM}": tickets["number"].isin(never_team).to_numpy(),
+        f"Not resolved in a batch ({BATCH_SIZE}+ tickets in one minute)": (per_minute < BATCH_SIZE).to_numpy(),
+    }
+    rows = []
+    for label, mask in subsets.items():
+        durations = (tickets.loc[mask, "duration_h"] / 24.0).to_numpy()
+        row = {"tickets": label, "n": int(mask.sum())}
+        for age in SUBSET_AGES:
+            rem = remaining(durations, age)
+            row[f"still_open_{age}d"] = len(rem)
+            row[f"median_remaining_{age}d"] = np.median(rem)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def calendar_table(tickets: pd.DataFrame) -> pd.DataFrame:
+    """Is the rhythm in the data made by batch entry? Three plain counts."""
+    per_minute = tickets.groupby("resolved_time")["number"].transform("size")
+    hours = tickets["duration_h"].to_numpy()
+    off_week = np.abs(hours - WEEK_H * np.round(hours / WEEK_H))
+    week_or_more = hours >= WEEK_H - 1.0
+    near_week = (off_week <= 1.0) & week_or_more
+    rows = [
+        ("tickets", len(tickets)),
+        (f"share resolved in a minute with {BATCH_SIZE}+ resolutions", (per_minute >= BATCH_SIZE).mean()),
+        ("most tickets resolved in one minute", int(per_minute.max())),
+        ("share resolved within 1 hour of a whole number of weeks after opening", near_week.mean()),
+        ("the same, among tickets that took a week or longer", near_week[week_or_more].mean()),
+    ]
+    return pd.DataFrame(rows, columns=["measure", "value"])
+
+
 TEXT = {
     "tr": {
         "title": "Kayıt ne kadar beklediyse, tipik olarak o kadar daha bekliyor",
@@ -100,16 +149,24 @@ def main() -> None:
     print("Finding 2: waiting-time fallacy")
     plotstyle.apply()
     con = db.connect()
-    durations = (db.incidents(con)["duration_h"] / 24.0).to_numpy()
+    tickets = db.incidents(con)
+    never_team = db.never_handled_by(con, config.BIGGEST_LATE_TEAM)
     con.close()
+    durations = (tickets["duration_h"] / 24.0).to_numpy()
 
     table = waiting_table(durations)
+    subsets = subsets_table(tickets, never_team)
+    calendar = calendar_table(tickets)
     config.TABLES_DIR.mkdir(parents=True, exist_ok=True)
     table.round(3).to_csv(config.TABLES_DIR / "waiting.csv", index=False)
+    subsets.round(3).to_csv(config.TABLES_DIR / "waiting_subsets.csv", index=False)
+    calendar.round(4).to_csv(config.TABLES_DIR / "calendar.csv", index=False)
     for lang in plotstyle.LANGS:
         plot(table, lang)
     print(f"mean {durations.mean():.2f} d, median {np.median(durations):.2f} d, n {len(durations)}")
     print(table.round(2).to_string(index=False))
+    print(subsets.round(2).to_string(index=False))
+    print(calendar.round(4).to_string(index=False))
 
 
 if __name__ == "__main__":

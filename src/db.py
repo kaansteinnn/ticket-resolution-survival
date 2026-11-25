@@ -64,5 +64,14 @@ def incidents(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     return con.execute("select * from incidents order by number").df()
 
 
+def never_handled_by(con: duckdb.DuckDBPyConnection, team: str) -> set[str]:
+    """Tickets that were not assigned to `team` at any point of their life (hindsight; descriptive use only)."""
+    rows = con.execute(
+        "select number from incidents where number not in (select number from events where assignment_group = ?)",
+        [team],
+    ).fetchall()
+    return {number for (number,) in rows}
+
+
 if __name__ == "__main__":
     build()
