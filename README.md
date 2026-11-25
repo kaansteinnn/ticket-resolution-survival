@@ -25,7 +25,8 @@ In short:
 
 The demo (`streamlit run app/app.py`, interface in Turkish) goes back to any day of May 2016, ranks
 that morning's open tickets by their risk of being late, and can then reveal what really happened.
-A one-page summary in Turkish is in [reports/OZET.md](reports/OZET.md).
+A one-page summary in Turkish is in [reports/OZET.md](reports/OZET.md), and the slides that present
+the project (25 slides, Turkish) are in [reports/sunum.pptx](reports/sunum.pptx).
 
 ## Findings
 
@@ -288,6 +289,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `app/app.py` | The demo; reads `app/data/predictions.parquet` (derived from the data, written by `run_all.py`) |
 | `reports/tables/`, `reports/figures/` | Outputs |
 | `reports/OZET.md` | One-page summary (Turkish) |
+| `reports/sunum.pptx` | Presentation slides (Turkish) |
 | `tests/` | Dataset facts, leakage tests, methods and scoring, the quoted numbers, the demo |
 
 ## Data
