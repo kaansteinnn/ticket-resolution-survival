@@ -40,7 +40,8 @@ def landmark_frame(con, cutoffs, label_time=END_OF_TIME) -> pd.DataFrame:
     """Open tickets at each cutoff, with the remaining time as known at `label_time`.
 
     Columns added to the snapshot: `remaining_h` (hours from the cutoff to resolution, or to
-    `label_time` if still open then) and `event` (True if resolved by `label_time`).
+    `label_time` if still open then), `event` (True if resolved by `label_time`) and `followup_h`
+    (hours from the cutoff to `label_time`: how long the ticket could be watched).
     """
     label_time = pd.Timestamp(label_time)
     known = db.snapshot(con, label_time).set_index("number")[["resolved", "resolved_time"]]
@@ -53,6 +54,7 @@ def landmark_frame(con, cutoffs, label_time=END_OF_TIME) -> pd.DataFrame:
         end = outcome["resolved_time"].where(outcome["resolved"], label_time).to_numpy()
         snap["event"] = outcome["resolved"].to_numpy()
         snap["remaining_h"] = (end - np.datetime64(cutoff)) / np.timedelta64(1, "h")
+        snap["followup_h"] = (label_time - cutoff) / pd.Timedelta(hours=1)
         frames.append(snap)
     return pd.concat(frames, ignore_index=True)
 

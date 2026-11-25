@@ -1,0 +1,33 @@
+period,training,method,c_index,top10,brier,count_error
+1-31 May,"Once, on 1 May",Oldest first,0.6744,0.876,,
+1-31 May,"Once, on 1 May","Team's past late rate, then oldest",0.6862,0.9716,,
+1-31 May,"Once, on 1 May",Past late rate by age band,0.6596,0.9099,0.2028,74.2045
+1-31 May,"Once, on 1 May",Regression on resolved tickets,0.6655,0.9452,0.2474,282.0693
+1-31 May,"Once, on 1 May",Kaplan–Meier by age,0.6731,0.8775,0.189,39.5941
+1-31 May,"Once, on 1 May",Cox,0.6901,0.9815,0.1801,44.2156
+1-31 May,"Once, on 1 May",Random survival forest,0.7054,0.9858,0.1734,42.6821
+1-31 May,"Once, on 1 May",Gradient boosting classifier,0.7054,0.9848,0.1728,45.1759
+1-31 May,Every week,Oldest first,0.6744,0.876,,
+1-31 May,Every week,"Team's past late rate, then oldest",0.6951,0.9715,,
+1-31 May,Every week,Past late rate by age band,0.6691,0.8658,0.1899,45.8621
+1-31 May,Every week,Regression on resolved tickets,0.6786,0.9399,0.2317,252.2102
+1-31 May,Every week,Kaplan–Meier by age,0.6753,0.886,0.1876,42.4854
+1-31 May,Every week,Cox,0.7006,0.9826,0.176,40.4219
+1-31 May,Every week,Random survival forest,0.7094,0.9842,0.1712,41.1638
+1-31 May,Every week,Gradient boosting classifier,0.7109,0.9844,0.1704,44.3518
+21-26 May,"Once, on 1 May",Oldest first,0.6875,0.9446,,
+21-26 May,"Once, on 1 May","Team's past late rate, then oldest",0.6756,0.9867,,
+21-26 May,"Once, on 1 May",Past late rate by age band,0.6702,0.9826,0.1899,166.2594
+21-26 May,"Once, on 1 May",Regression on resolved tickets,0.6548,0.9839,0.2671,356.6977
+21-26 May,"Once, on 1 May",Kaplan–Meier by age,0.6835,0.9446,0.1661,91.796
+21-26 May,"Once, on 1 May",Cox,0.6865,0.9941,0.1686,101.4852
+21-26 May,"Once, on 1 May",Random survival forest,0.705,0.9941,0.1589,94.3816
+21-26 May,"Once, on 1 May",Gradient boosting classifier,0.7013,0.9941,0.1599,84.178
+21-26 May,Every week,Oldest first,0.6875,0.9446,,
+21-26 May,Every week,"Team's past late rate, then oldest",0.6926,0.9779,,
+21-26 May,Every week,Past late rate by age band,0.683,0.9446,0.1659,110.5413
+21-26 May,Every week,Regression on resolved tickets,0.6776,0.9781,0.236,308.8349
+21-26 May,Every week,Kaplan–Meier by age,0.6867,0.9548,0.1652,102.7993
+21-26 May,Every week,Cox,0.7055,0.9941,0.1607,90.5271
+21-26 May,Every week,Random survival forest,0.7129,0.9926,0.1551,88.0122
+21-26 May,Every week,Gradient boosting classifier,0.7091,0.9926,0.1559,84.0155

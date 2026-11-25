@@ -1,6 +1,8 @@
-"""Figures for the model comparison and the late-count forecast, drawn from the tables written by src/evaluate.py.
+"""Figures for the model comparison, the late-count forecast and the open-ticket check.
 
-Run: python -m src.analysis.model_report   (after python -m src.evaluate)
+Drawn from the tables written by src/evaluate.py and src/checks.py.
+
+Run: python -m src.analysis.model_report   (after python -m src.evaluate and python -m src.checks)
 """
 
 from __future__ import annotations
@@ -13,25 +15,29 @@ from src import config, plotstyle
 
 FOREST = "Random survival forest"
 REGRESSION = "Regression on resolved tickets"
-SIMPLE = ["Oldest first", "Team's past late rate, then oldest", REGRESSION]
-PAST_SHARE = "Late share of all past queues"
+AGE_BAND = "Past late rate by age band"
+CLASSIFIER = "Gradient boosting classifier"
+SIMPLE = ["Oldest first", "Team's past late rate, then oldest", AGE_BAND, REGRESSION]
 
 TEXT = {
     "tr": {
         "methods": {
             "Oldest first": "En eski kayıt önce",
             "Team's past late rate, then oldest": "Ekibin geçmiş gecikme oranı",
+            AGE_BAND: "Yaşa göre geçmiş gecikme oranı",
             REGRESSION: "Çözülmüş kayıtlarla regresyon",
             "Kaplan–Meier by age": "Yaşa göre Kaplan–Meier",
             "Cox": "Cox",
             FOREST: "Sağkalım ormanı",
+            CLASSIFIER: "Sınıflandırıcı (gecikir / gecikmez)",
         },
         "suptitle": "Mayıs 2016'nın 31 günlük kuyruğunda yöntemler (nokta: ortalama, çizgi: en düşük–en yüksek gün)",
         "c_index": "Sıralama doğruluğu (C-index)\nyüksek iyi",
         "top10": "En riskli %10'da gerçekten geciken\nyüksek iyi",
         "brier": "Olasılık hatası (Brier)\ndüşük iyi",
-        "simple": "Sezgisel yöntem",
+        "simple": "Basit yöntem",
         "survival": "Sağkalım yöntemi",
+        "other": "Sıradan sınıflandırıcı",
         "random": "rastgele",
         "base": "herkese aynı oran",
         "no_prob": "olasılık vermez",
@@ -44,21 +50,29 @@ TEXT = {
         "observed": "Gerçekleşen",
         "months": "May",
         "decimal": ",",
-        "work_title": "Her sabahki kuyrukta 7 günde çözülmeyecek kayıt sayısı: tahminler ve gerçekleşen",
+        "work_title": "Her günün kuyruğunda 7 günde çözülmeyecek kayıt sayısı: tahminler ve gerçekleşen",
         "work_y": "Kayıt sayısı",
         "work_truth": "Gerçekleşen",
         "work_forest": "Sağkalım ormanı",
-        "work_past": "Geçmişteki gecikme oranı × kuyruk",
+        "work_past": "Yaşa göre geçmiş gecikme oranı",
         "work_regression": "Çözülmüş kayıtlarla regresyon",
+        "open_title": "Aynı sınıflandırıcı, üç eğitim kümesi: geciken kayıt sayısındaki günlük ortalama hata",
+        "open_x": "Günlük ortalama hata (kayıt)",
+        "open_all": "7 günlük sonucu bilinen bütün satırlar",
+        "open_random": "Aynı sayıda satır, rastgele atılmış",
+        "open_resolved": "Yalnız çözülmüş kayıtlar\n(açık olanlar atılmış)",
+        "open_rows": "satır",
     },
     "en": {
         "methods": {
             "Oldest first": "Oldest first",
             "Team's past late rate, then oldest": "Team's past late rate",
+            AGE_BAND: "Past late rate by age band",
             REGRESSION: "Regression on resolved tickets",
             "Kaplan–Meier by age": "Kaplan–Meier by age",
             "Cox": "Cox",
             FOREST: "Random survival forest",
+            CLASSIFIER: "Classifier (late / not late)",
         },
         "suptitle": "Methods on the 31 daily queues of May 2016 (dot: mean, line: lowest–highest day)",
         "c_index": "Ranking accuracy (C-index)\nhigher is better",
@@ -66,6 +80,7 @@ TEXT = {
         "brier": "Probability error (Brier)\nlower is better",
         "simple": "Simple method",
         "survival": "Survival method",
+        "other": "Ordinary classifier",
         "random": "random",
         "base": "same rate for all",
         "no_prob": "no probability",
@@ -78,12 +93,18 @@ TEXT = {
         "observed": "Observed",
         "months": "May",
         "decimal": ".",
-        "work_title": "Tickets in each morning's queue that will not be resolved within 7 days: forecasts and outcome",
+        "work_title": "Tickets in each day's queue that will not be resolved within 7 days: forecasts and outcome",
         "work_y": "Tickets",
         "work_truth": "What actually happened",
         "work_forest": "Random survival forest",
-        "work_past": "Past late share × queue size",
+        "work_past": "Past late rate by age band",
         "work_regression": "Regression on resolved tickets",
+        "open_title": "One classifier, three training sets: mean daily error in the number of late tickets",
+        "open_x": "Mean daily error (tickets)",
+        "open_all": "All rows with a known 7-day outcome",
+        "open_random": "Same number of rows, dropped at random",
+        "open_resolved": "Resolved tickets only\n(open ones thrown away)",
+        "open_rows": "rows",
     },
 }
 
@@ -101,7 +122,8 @@ def plot_comparison(summary: pd.DataFrame, daily: pd.DataFrame, lang: str) -> No
         "brier": ((late_share * (1 - late_share)).mean(), t["base"]),
     }
     methods = summary["method"].tolist()[::-1]  # first method at the top
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.0), sharey=True)
+    colour = lambda name: plotstyle.NAIVE if name in SIMPLE else plotstyle.OTHER if name == CLASSIFIER else plotstyle.SURVIVAL
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4.9), sharey=True)
     for ax, metric in zip(axes, ["c_index", "top10", "brier"]):
         ref, ref_label = references[metric]
         ax.axvline(ref, color=plotstyle.AXIS, linewidth=1)
@@ -109,7 +131,7 @@ def plot_comparison(summary: pd.DataFrame, daily: pd.DataFrame, lang: str) -> No
                     color=plotstyle.INK_MUTED, annotation_clip=False)
         for y, name in enumerate(methods):
             row = summary[summary["method"] == name].iloc[0]
-            color = plotstyle.NAIVE if name in SIMPLE else plotstyle.SURVIVAL
+            color = colour(name)
             mean = row[f"{metric}_mean"]
             if pd.isna(mean):
                 ax.annotate(t["no_prob"], xy=(ref, y), xytext=(8, 0), textcoords="offset points", va="center",
@@ -131,8 +153,9 @@ def plot_comparison(summary: pd.DataFrame, daily: pd.DataFrame, lang: str) -> No
     handles = [
         plt.Line2D([], [], marker="o", linestyle="", markersize=8, color=plotstyle.NAIVE, label=t["simple"]),
         plt.Line2D([], [], marker="o", linestyle="", markersize=8, color=plotstyle.SURVIVAL, label=t["survival"]),
+        plt.Line2D([], [], marker="o", linestyle="", markersize=8, color=plotstyle.OTHER, label=t["other"]),
     ]
-    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.01, 0.925), ncol=2, fontsize=10)
+    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.01, 0.935), ncol=3, fontsize=10)
     fig.suptitle(t["suptitle"], x=0.015, y=1.0, ha="left", fontsize=12.5, fontweight="bold")
     fig.tight_layout(rect=(0, 0, 1, 0.9))
     plotstyle.save(fig, "model_comparison", lang)
@@ -186,12 +209,11 @@ def plot_workload(daily: pd.DataFrame, workload: pd.DataFrame, lang: str) -> Non
     days = daily.drop_duplicates("cutoff")
     x = pd.to_datetime(days["cutoff"])
     tickets = days["tickets"].to_numpy()
-    past_share = workload.set_index("method").loc[PAST_SHARE, "fixed_late_share"]
     forecast = lambda name: tickets * daily.loc[daily["method"] == name, "mean_p_late"].to_numpy()
     series = [
         (t["work_truth"], tickets * days["late_share"].to_numpy(), plotstyle.TRUTH, "-", 7),
         (t["work_forest"], forecast(FOREST), plotstyle.SURVIVAL, "-", -7),
-        (t["work_past"], tickets * past_share, plotstyle.NAIVE, (0, (4, 3)), 0),
+        (t["work_past"], forecast(AGE_BAND), plotstyle.NAIVE, (0, (4, 3)), 0),
         (t["work_regression"], forecast(REGRESSION), plotstyle.NAIVE, "-", 0),
     ]
     fig, ax = plt.subplots(figsize=(10, 4.4))
@@ -208,6 +230,32 @@ def plot_workload(daily: pd.DataFrame, workload: pd.DataFrame, lang: str) -> Non
     plotstyle.save(fig, "workload", lang)
 
 
+def plot_open_tickets(check: pd.DataFrame, lang: str) -> None:
+    """What throwing away the still-open tickets costs: one classifier, three training sets."""
+    t = TEXT[lang]
+    all_rows, resolved = check.iloc[0], check.iloc[1]
+    random = check.iloc[2:]
+    rows = lambda n: f"({int(n):,} {t['open_rows']})".replace(",", "." if lang == "tr" else ",")
+    bars = [
+        (f"{t['open_all']}\n{rows(all_rows['rows'])}", all_rows["count_error"], plotstyle.SURVIVAL),
+        (f"{t['open_random']}\n{rows(random['rows'].iloc[0])}", random["count_error"].mean(), plotstyle.SURVIVAL),
+        (f"{t['open_resolved']}\n{rows(resolved['rows'])}", resolved["count_error"], plotstyle.NAIVE),
+    ]
+    fig, ax = plt.subplots(figsize=(9, 3.2))
+    for y, (label, value, color) in enumerate(bars[::-1]):
+        ax.barh(y, value, color=color, height=0.55)
+        ax.annotate(f"{value:.0f}", xy=(value, y), xytext=(6, 0), textcoords="offset points", va="center",
+                    fontsize=10, color=plotstyle.INK)
+    ax.set_yticks(range(len(bars)), [b[0] for b in bars[::-1]])
+    ax.set_title(t["open_title"])
+    ax.set_xlabel(t["open_x"])
+    ax.set_xlim(0, resolved["count_error"] * 1.12)
+    ax.grid(axis="y", visible=False)
+    ax.grid(axis="x", visible=True)
+    fig.tight_layout()
+    plotstyle.save(fig, "open_tickets", lang)
+
+
 def main() -> None:
     print("Model figures")
     plotstyle.apply()
@@ -215,10 +263,12 @@ def main() -> None:
     daily = pd.read_csv(config.TABLES_DIR / "model_daily.csv")
     calibration = pd.read_csv(config.TABLES_DIR / "model_calibration.csv")
     workload = pd.read_csv(config.TABLES_DIR / "model_workload.csv")
+    open_check = pd.read_csv(config.TABLES_DIR / "check_open_tickets.csv")
     for lang in plotstyle.LANGS:
         plot_comparison(summary, daily, lang)
         plot_calibration(calibration, daily, lang)
         plot_workload(daily, workload, lang)
+        plot_open_tickets(open_check, lang)
 
 
 if __name__ == "__main__":

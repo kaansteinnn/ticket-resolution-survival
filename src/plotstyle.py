@@ -12,6 +12,7 @@ from src import config  # noqa: E402
 # Series colours follow the role of the series, the same in every figure.
 NAIVE = "#eb6834"  # the intuitive method (resolved tickets only, or a fixed average)
 SURVIVAL = "#2a78d6"  # the survival-analysis estimate
+OTHER = "#6f6e69"  # a method that is neither (the ordinary classifier)
 TRUTH = "#0b0b0b"  # what actually happened
 
 SURFACE = "#fcfcfb"

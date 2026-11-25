@@ -1,0 +1,9 @@
+method,training_rows,test_tickets,actual_late_mean,c_index,top10,brier,count_error
+Oldest first,26039,3840,566.6129,0.6592,0.8481,,
+"Team's past late rate, then oldest",26039,3840,566.6129,0.6387,0.8256,,
+Past late rate by age band,26039,3840,566.6129,0.6383,0.8131,0.2249,47.3304
+Regression on resolved tickets,26039,3840,566.6129,0.601,0.7715,0.2733,205.1972
+Kaplan–Meier by age,26039,3840,566.6129,0.6555,0.8532,0.2143,47.3679
+Cox,26039,3840,566.6129,0.6415,0.807,0.2165,47.3985
+Random survival forest,26039,3840,566.6129,0.6616,0.8658,0.2073,46.0146
+Gradient boosting classifier,26039,3840,566.6129,0.6654,0.8418,0.2072,47.9664

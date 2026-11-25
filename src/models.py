@@ -10,6 +10,7 @@ Simple methods:
   OldestFirst         - the rule of thumb: the ticket that has been open longest is the riskiest
   TeamHistory         - one step smarter: rank by how often the ticket's team was late so far,
                         oldest first within a team
+  LateRateByAge       - no model: how often past tickets of the same age were late
   ResolvedOnlyRegression - linear regression of log remaining time, fitted on the tickets that were
                         resolved by the training date (the still-open ones are thrown away)
   KaplanMeierByAge    - no ticket attributes at all: the overall Kaplan-Meier curve, conditioned on age
@@ -17,6 +18,13 @@ Simple methods:
 Survival models (use the still-open tickets as censored observations):
   Cox                 - proportional hazards, interpretable coefficients (lifelines)
   SurvivalForest      - random survival forest (scikit-survival)
+
+An ordinary classifier, to see whether a survival model is needed at all:
+  LateClassifier      - gradient boosting on the yes/no question "late or not", fitted on the rows
+                        whose 7-day outcome was already known at training time
+
+"Late" = not resolved within 7 days of the cutoff. A row's 7-day outcome is known at training time
+when the ticket could be watched for 7 days (`followup_h` >= 168); an open ticket then counts as late.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ import numpy as np
 import pandas as pd
 from lifelines import CoxPHFitter, KaplanMeierFitter
 from scipy.stats import norm
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LinearRegression
 from sksurv.ensemble import RandomSurvivalForest
 from sksurv.util import Surv
@@ -32,7 +41,24 @@ from sksurv.util import Surv
 # Horizons at which every probabilistic method reports P(resolved): 1..30 days after the cutoff.
 GRID_H = 24.0 * np.arange(1, 31)
 
+LATE_H = 168.0  # "late" = not resolved within 7 days of the cutoff
+LATE_IDX = 6  # position of the 7-day horizon in GRID_H
+
 MIN_HOURS = 1 / 60  # timestamps have minute resolution
+
+
+def known_late(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """(rows whose 7-day outcome is known at training time, whether each row is late)."""
+    known = (frame["followup_h"] >= LATE_H).to_numpy()
+    late = ((~frame["event"]) | (frame["remaining_h"] > LATE_H)).to_numpy()
+    return known, late
+
+
+def only_late_horizon(p_late: np.ndarray) -> np.ndarray:
+    """Probability table for a method that answers the 7-day question only (other horizons empty)."""
+    prob = np.full((len(p_late), len(GRID_H)), np.nan)
+    prob[:, LATE_IDX] = 1.0 - p_late
+    return prob
 
 
 class OldestFirst:
@@ -54,13 +80,12 @@ class TeamHistory:
     """
 
     name = "Team's past late rate, then oldest"
-    HORIZON_H = 168.0
     MIN_ROWS = 50
 
     def fit(self, frame, x):
-        known = frame[frame["event"] | (frame["remaining_h"] >= self.HORIZON_H)]
-        late = known["remaining_h"] > self.HORIZON_H
-        by_team = late.groupby(known["assignment_group"]).agg(["mean", "size", "sum"])
+        known, late = known_late(frame)
+        late = pd.Series(late[known])
+        by_team = late.groupby(frame.loc[known, "assignment_group"].to_numpy()).agg(["mean", "size", "sum"])
         self.overall_ = float(late.mean())
         self.rates_ = by_team.loc[by_team["size"] >= self.MIN_ROWS, "mean"].to_dict()
         # The team holding the largest backlog of late tickets; used to ask "how much of the result is one team?"
@@ -74,6 +99,31 @@ class TeamHistory:
         slowness = np.empty(len(frame))
         slowness[order] = np.arange(len(frame))
         return slowness, None
+
+
+class LateRateByAge:
+    """No model: the share of past tickets of the same age that were late.
+
+    The calculation a team lead could do in a spreadsheet: split the past queues into age bands and
+    count how many tickets of each band were still open a week later.
+    """
+
+    name = "Past late rate by age band"
+    EDGES_H = 24.0 * np.array([0, 1, 3, 7, 14, 28, 56, np.inf])
+
+    def _band(self, frame):
+        return np.searchsorted(self.EDGES_H, frame["duration_h"].to_numpy(), side="right") - 1
+
+    def fit(self, frame, x):
+        known, late = known_late(frame)
+        self.overall_ = float(late[known].mean())
+        rates = pd.Series(late[known]).groupby(self._band(frame)[known]).mean()
+        self.rates_ = rates.reindex(range(len(self.EDGES_H) - 1)).fillna(self.overall_).to_numpy()
+        return self
+
+    def predict(self, frame, x):
+        p_late = self.rates_[self._band(frame)]
+        return p_late, only_late_horizon(p_late)
 
 
 class ResolvedOnlyRegression:
@@ -126,7 +176,8 @@ class Cox:
         self.penalizer = penalizer
 
     def fit(self, frame, x):
-        data = x.copy()
+        self.columns_ = x.columns[x.std() > 0].tolist()  # a column that never varies cannot be fitted
+        data = x[self.columns_].copy()
         data["remaining_h"] = frame["remaining_h"].clip(lower=MIN_HOURS).to_numpy()
         data["event"] = frame["event"].to_numpy()
         data["number"] = frame["number"].to_numpy()
@@ -137,6 +188,7 @@ class Cox:
         return self
 
     def predict(self, frame, x):
+        x = x[self.columns_]
         surv = self.model_.predict_survival_function(x, times=GRID_H).to_numpy().T
         return -self.model_.predict_log_partial_hazard(x).to_numpy(), 1.0 - surv
 
@@ -184,3 +236,46 @@ class SurvivalForest:
         idx = np.searchsorted(times, GRID_H, side="right") - 1
         on_grid = np.where(idx[None, :] >= 0, surv[:, np.clip(idx, 0, None)], 1.0)
         return -self.model_.predict(x), 1.0 - on_grid
+
+
+class LateClassifier:
+    """Gradient boosting on the yes/no question itself: will this ticket be late?
+
+    It is not a survival model: it answers one horizon only and learns from the rows whose 7-day
+    outcome was already known at training time (a ticket still open after those 7 days is a "yes").
+
+    `rows` chooses which of those rows are used. "known" (the default) uses all of them. "resolved"
+    keeps only tickets already resolved at training time, i.e. it throws the still-open ones away;
+    it exists to measure what that costs (src/checks.py).
+    """
+
+    name = "Gradient boosting classifier"
+
+    def __init__(self, max_leaf_nodes: int = 7, min_samples_leaf: int = 240, rows: str = "known"):
+        self.max_leaf_nodes = max_leaf_nodes
+        self.min_samples_leaf = min_samples_leaf
+        self.rows = rows
+
+    def training_rows(self, frame: pd.DataFrame) -> np.ndarray:
+        known, _ = known_late(frame)
+        return known & frame["event"].to_numpy() if self.rows == "resolved" else known
+
+    def fit(self, frame, x, keep: np.ndarray | None = None):
+        """`keep` optionally restricts the training rows further (used for the same-size control)."""
+        rows = self.training_rows(frame) if keep is None else keep
+        _, late = known_late(frame)
+        self.n_used_ = int(rows.sum())
+        self.model_ = HistGradientBoostingClassifier(
+            max_iter=200,
+            learning_rate=0.05,
+            max_leaf_nodes=self.max_leaf_nodes,
+            min_samples_leaf=self.min_samples_leaf,
+            l2_regularization=10.0,
+            early_stopping=False,
+            random_state=0,
+        ).fit(x[rows], late[rows])
+        return self
+
+    def predict(self, frame, x):
+        p_late = self.model_.predict_proba(x)[:, 1]
+        return p_late, only_late_horizon(p_late)

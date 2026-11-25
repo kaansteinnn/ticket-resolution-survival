@@ -1,4 +1,14 @@
 method,bin,rows,predicted,observed
+Past late rate by age band,1,3717,0.1823,0.1391
+Past late rate by age band,2,3717,0.184,0.0979
+Past late rate by age band,3,3717,0.2977,0.2736
+Past late rate by age band,4,3716,0.3576,0.1601
+Past late rate by age band,5,3717,0.4499,0.1404
+Past late rate by age band,6,3717,0.4656,0.424
+Past late rate by age band,7,3716,0.4859,0.4446
+Past late rate by age band,8,3717,0.501,0.5061
+Past late rate by age band,9,3717,0.5316,0.6037
+Past late rate by age band,10,3717,0.5797,0.6408
 Regression on resolved tickets,1,3717,0.3262,0.0546
 Regression on resolved tickets,2,3717,0.3841,0.0823
 Regression on resolved tickets,3,3717,0.4551,0.1994
@@ -39,3 +49,13 @@ Random survival forest,7,3716,0.4496,0.4548
 Random survival forest,8,3717,0.5243,0.5241
 Random survival forest,9,3717,0.5843,0.6478
 Random survival forest,10,3717,0.6454,0.7285
+Gradient boosting classifier,1,3717,0.038,0.0188
+Gradient boosting classifier,2,3717,0.0519,0.0326
+Gradient boosting classifier,3,3717,0.1599,0.1899
+Gradient boosting classifier,4,3716,0.2204,0.1986
+Gradient boosting classifier,5,3717,0.2818,0.3019
+Gradient boosting classifier,6,3717,0.3721,0.3653
+Gradient boosting classifier,7,3716,0.4662,0.4354
+Gradient boosting classifier,8,3717,0.5447,0.5362
+Gradient boosting classifier,9,3717,0.6035,0.6239
+Gradient boosting classifier,10,3717,0.6876,0.7277

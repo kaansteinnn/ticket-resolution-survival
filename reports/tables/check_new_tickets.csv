@@ -1,0 +1,17 @@
+tickets,method,n_tickets,rows,late_share,c_index,top10,brier,count_error
+Never in a training queue,Oldest first,3039,19172,0.5166,0.5935,0.6579,,
+Never in a training queue,"Team's past late rate, then oldest",3039,19172,0.5166,0.623,0.8448,,
+Never in a training queue,Past late rate by age band,3039,19172,0.5166,0.5854,0.6579,0.2334,30.021
+Never in a training queue,Regression on resolved tickets,3039,19172,0.5166,0.6225,0.7926,0.2436,99.152
+Never in a training queue,Kaplan–Meier by age,3039,19172,0.5166,0.5915,0.6599,0.2332,30.3611
+Never in a training queue,Cox,3039,19172,0.5166,0.6238,0.8112,0.2199,32.5777
+Never in a training queue,Random survival forest,3039,19172,0.5166,0.6333,0.8204,0.2143,29.6744
+Never in a training queue,Gradient boosting classifier,3039,19172,0.5166,0.6378,0.8246,0.2147,29.9929
+Also in a training queue,Oldest first,1039,17996,0.8065,0.5688,0.8571,,
+Also in a training queue,"Team's past late rate, then oldest",1039,17996,0.8065,0.6055,0.9593,,
+Also in a training queue,Past late rate by age band,1039,17996,0.8065,0.5437,0.9137,0.1661,70.3334
+Also in a training queue,Regression on resolved tickets,1039,17996,0.8065,0.5861,0.9066,0.245,185.179
+Also in a training queue,Kaplan–Meier by age,1039,17996,0.8065,0.5644,0.8527,0.1329,13.1094
+Also in a training queue,Cox,1039,17996,0.8065,0.6044,0.968,0.1312,31.5636
+Also in a training queue,Random survival forest,1039,17996,0.8065,0.6157,0.981,0.1224,22.679
+Also in a training queue,Gradient boosting classifier,1039,17996,0.8065,0.6145,0.9755,0.1193,16.9146

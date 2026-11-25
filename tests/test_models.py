@@ -19,6 +19,7 @@ def toy(n=400, seed=0):
             "duration_h": rng.uniform(1, 500, n),
             "remaining_h": np.minimum(true_h, follow_up),
             "event": true_h <= follow_up,
+            "followup_h": follow_up,
             "assignment_group": np.where(slow == 1, "slow team", "fast team"),
         }
     )
@@ -57,6 +58,41 @@ def test_team_history_ranks_slow_team_first_then_oldest():
     assert slowness[slow == 1].min() > slowness[slow == 0].max()
     fast = frame[slow == 0]
     assert slowness[slow == 0][fast["duration_h"].argmax()] == slowness[slow == 0].max()
+
+
+def test_seven_day_outcome_is_known_only_after_seven_days_of_follow_up():
+    """A ticket resolved early in a recently opened window is not "known": using it would favour quick tickets."""
+    frame = pd.DataFrame(
+        {
+            "remaining_h": [50.0, 100.0, 200.0, 168.0],
+            "event": [True, False, True, False],
+            "followup_h": [100.0, 100.0, 400.0, 168.0],
+        }
+    )
+    known, late = models.known_late(frame)
+    assert known.tolist() == [False, False, True, True]
+    assert late[known].tolist() == [True, True]  # resolved after 200 h; still open after the full 7 days
+
+
+def test_classifier_and_age_bands_answer_the_seven_day_question_only():
+    frame, x, slow = toy()
+    for model in (models.LateClassifier(min_samples_leaf=20), models.LateRateByAge()):
+        p_late, prob = model.fit(frame, x).predict(frame, x)
+        assert ((p_late >= 0) & (p_late <= 1)).all()
+        assert np.allclose(prob[:, models.LATE_IDX], 1 - p_late)
+        assert np.isnan(np.delete(prob, models.LATE_IDX, axis=1)).all()
+    p_late, _ = models.LateClassifier(min_samples_leaf=20).fit(frame, x).predict(frame, x)
+    assert p_late[slow == 1].mean() > p_late[slow == 0].mean()
+
+
+def test_classifier_that_drops_open_tickets_is_too_optimistic():
+    frame, x, _ = toy(n=2000)
+    known, late = models.known_late(frame)
+    everything = models.LateClassifier(min_samples_leaf=20).fit(frame, x)
+    resolved_only = models.LateClassifier(min_samples_leaf=20, rows="resolved").fit(frame, x)
+    assert resolved_only.n_used_ < everything.n_used_ == known.sum()
+    assert resolved_only.predict(frame, x)[0].mean() < everything.predict(frame, x)[0].mean() - 0.05
+    assert everything.predict(frame, x)[0][known].mean() == pytest.approx(late[known].mean(), abs=0.02)
 
 
 def test_queue_metrics_on_a_perfect_and_a_reversed_ranking():

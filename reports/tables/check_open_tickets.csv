@@ -1,0 +1,6 @@
+training_rows,rows,late_share_in_training,c_index,top10,brier,count_error
+All rows with a known 7-day outcome,25640,0.55195,0.705407,0.984787,0.172831,45.175899
+Only tickets already resolved,19747,0.418241,0.591245,0.760307,0.26445,266.264315
+"Same number of rows, dropped at random (seed 1)",19747,0.550868,0.704117,0.978674,0.172677,44.810746
+"Same number of rows, dropped at random (seed 2)",19747,0.554059,0.706287,0.978958,0.172674,44.659572
+"Same number of rows, dropped at random (seed 3)",19747,0.551375,0.705644,0.983412,0.172768,44.725695

@@ -1,7 +1,9 @@
 method,days,c_index_mean,c_index_min,c_index_max,top10_mean,top10_min,top10_max,brier_mean,brier_min,brier_max,days_c_index_above_reference,days_top10_above_reference
 Oldest first,31,0.674,0.642,0.695,0.876,0.778,0.974,,,,0,0
-"Team's past late rate, then oldest",31,0.686,0.666,0.712,0.972,0.853,1.0,,,,17,26
+"Team's past late rate, then oldest",31,0.686,0.667,0.714,0.972,0.853,1.0,,,,17,26
+Past late rate by age band,31,0.66,0.631,0.679,0.91,0.8,0.991,0.203,0.186,0.218,0,26
 Regression on resolved tickets,31,0.666,0.644,0.697,0.945,0.879,0.991,0.247,0.228,0.285,15,27
 Kaplan–Meier by age,31,0.673,0.639,0.689,0.878,0.764,0.974,0.189,0.16,0.217,12,9
 Cox,31,0.69,0.678,0.706,0.982,0.904,1.0,0.18,0.162,0.197,24,31
 Random survival forest,31,0.705,0.686,0.728,0.986,0.912,1.0,0.173,0.151,0.192,31,31
+Gradient boosting classifier,31,0.705,0.688,0.724,0.985,0.912,1.0,0.173,0.15,0.192,31,31

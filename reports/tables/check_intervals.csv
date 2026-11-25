@@ -1,0 +1,105 @@
+scope,quantity,metric,value,lo,hi
+All tickets,Oldest first,c_index,0.6744,0.6647,0.6831
+All tickets,Oldest first,top10,0.876,0.8513,0.9002
+All tickets,"Team's past late rate, then oldest",c_index,0.6862,0.6758,0.6955
+All tickets,"Team's past late rate, then oldest",top10,0.9716,0.9594,0.9828
+All tickets,Past late rate by age band,c_index,0.6596,0.651,0.6678
+All tickets,Past late rate by age band,top10,0.9099,0.8879,0.9294
+All tickets,Past late rate by age band,brier,0.2028,0.1986,0.2072
+All tickets,Past late rate by age band,count_error,74.2045,60.8333,89.5366
+All tickets,Regression on resolved tickets,c_index,0.6655,0.653,0.677
+All tickets,Regression on resolved tickets,top10,0.9452,0.9289,0.9616
+All tickets,Regression on resolved tickets,brier,0.2474,0.2417,0.253
+All tickets,Regression on resolved tickets,count_error,282.0693,258.3545,304.9327
+All tickets,Kaplan–Meier by age,c_index,0.6731,0.6636,0.6817
+All tickets,Kaplan–Meier by age,top10,0.8775,0.8525,0.8994
+All tickets,Kaplan–Meier by age,brier,0.189,0.1836,0.1946
+All tickets,Kaplan–Meier by age,count_error,39.5941,34.7405,49.3708
+All tickets,Cox,c_index,0.6901,0.68,0.6993
+All tickets,Cox,top10,0.9815,0.9713,0.9906
+All tickets,Cox,brier,0.1801,0.175,0.1856
+All tickets,Cox,count_error,44.2156,38.9318,53.51
+All tickets,Random survival forest,c_index,0.7054,0.6955,0.7139
+All tickets,Random survival forest,top10,0.9858,0.9766,0.9933
+All tickets,Random survival forest,brier,0.1734,0.1685,0.1786
+All tickets,Random survival forest,count_error,42.6821,37.5002,51.2652
+All tickets,Gradient boosting classifier,c_index,0.7054,0.6963,0.7139
+All tickets,Gradient boosting classifier,top10,0.9848,0.9749,0.9926
+All tickets,Gradient boosting classifier,brier,0.1728,0.1673,0.1787
+All tickets,Gradient boosting classifier,count_error,45.1759,39.0481,53.4695
+All tickets,Random survival forest minus Oldest first,c_index,0.0311,0.0222,0.0395
+All tickets,Random survival forest minus Oldest first,top10,0.1099,0.0837,0.1359
+All tickets,"Random survival forest minus Team's past late rate, then oldest",c_index,0.0192,0.0124,0.0265
+All tickets,"Random survival forest minus Team's past late rate, then oldest",top10,0.0143,0.0026,0.0257
+All tickets,Random survival forest minus Cox,c_index,0.0153,0.0106,0.0198
+All tickets,Random survival forest minus Cox,top10,0.0043,-0.0005,0.0098
+All tickets,Random survival forest minus Cox,brier,-0.0067,-0.0085,-0.0046
+All tickets,Random survival forest minus Cox,count_error,-1.5335,-5.0144,1.1199
+All tickets,Random survival forest minus Gradient boosting classifier,c_index,0.0,-0.003,0.003
+All tickets,Random survival forest minus Gradient boosting classifier,top10,0.001,-0.0028,0.0049
+All tickets,Random survival forest minus Gradient boosting classifier,brier,0.0006,-0.0006,0.0017
+All tickets,Random survival forest minus Gradient boosting classifier,count_error,-2.4938,-4.2528,0.8538
+All tickets,Random survival forest minus Kaplan–Meier by age,c_index,0.0323,0.0236,0.0403
+All tickets,Random survival forest minus Kaplan–Meier by age,top10,0.1083,0.0851,0.135
+All tickets,Random survival forest minus Kaplan–Meier by age,brier,-0.0156,-0.0181,-0.0128
+All tickets,Random survival forest minus Kaplan–Meier by age,count_error,3.088,-0.3112,5.4638
+All tickets,Kaplan–Meier by age minus Past late rate by age band,c_index,0.0136,0.0065,0.0211
+All tickets,Kaplan–Meier by age minus Past late rate by age band,top10,-0.0324,-0.0625,-0.0028
+All tickets,Kaplan–Meier by age minus Past late rate by age band,brier,-0.0138,-0.0169,-0.0108
+All tickets,Kaplan–Meier by age minus Past late rate by age band,count_error,-34.6103,-49.4768,-15.5814
+All tickets,Kaplan–Meier by age minus Regression on resolved tickets,c_index,0.0076,-0.0037,0.02
+All tickets,Kaplan–Meier by age minus Regression on resolved tickets,top10,-0.0677,-0.0948,-0.0433
+All tickets,Kaplan–Meier by age minus Regression on resolved tickets,brier,-0.0584,-0.0661,-0.0512
+All tickets,Kaplan–Meier by age minus Regression on resolved tickets,count_error,-242.4752,-265.1425,-213.8593
+Without Group 9,Oldest first,c_index,0.6592,0.6474,0.6699
+Without Group 9,Oldest first,top10,0.8481,0.8178,0.8766
+Without Group 9,"Team's past late rate, then oldest",c_index,0.6387,0.6269,0.6506
+Without Group 9,"Team's past late rate, then oldest",top10,0.8256,0.7756,0.884
+Without Group 9,Past late rate by age band,c_index,0.6383,0.6285,0.6477
+Without Group 9,Past late rate by age band,top10,0.8131,0.7716,0.8517
+Without Group 9,Past late rate by age band,brier,0.2249,0.2213,0.2289
+Without Group 9,Past late rate by age band,count_error,47.3304,41.4279,58.3824
+Without Group 9,Regression on resolved tickets,c_index,0.601,0.5869,0.6139
+Without Group 9,Regression on resolved tickets,top10,0.7715,0.7227,0.8055
+Without Group 9,Regression on resolved tickets,brier,0.2733,0.2669,0.2798
+Without Group 9,Regression on resolved tickets,count_error,205.1972,184.3905,226.1116
+Without Group 9,Kaplan–Meier by age,c_index,0.6555,0.6437,0.6659
+Without Group 9,Kaplan–Meier by age,top10,0.8532,0.8209,0.8802
+Without Group 9,Kaplan–Meier by age,brier,0.2143,0.2086,0.2204
+Without Group 9,Kaplan–Meier by age,count_error,47.3679,39.8883,58.4135
+Without Group 9,Cox,c_index,0.6415,0.6294,0.6529
+Without Group 9,Cox,top10,0.807,0.769,0.8456
+Without Group 9,Cox,brier,0.2165,0.2117,0.2216
+Without Group 9,Cox,count_error,47.3985,41.1021,56.7915
+Without Group 9,Random survival forest,c_index,0.6616,0.6502,0.6725
+Without Group 9,Random survival forest,top10,0.8658,0.8261,0.8959
+Without Group 9,Random survival forest,brier,0.2073,0.2025,0.2123
+Without Group 9,Random survival forest,count_error,46.0146,39.2969,54.9711
+Without Group 9,Gradient boosting classifier,c_index,0.6654,0.654,0.6765
+Without Group 9,Gradient boosting classifier,top10,0.8418,0.8086,0.8754
+Without Group 9,Gradient boosting classifier,brier,0.2072,0.2013,0.2129
+Without Group 9,Gradient boosting classifier,count_error,47.9664,41.4064,57.5442
+Without Group 9,Random survival forest minus Oldest first,c_index,0.0024,-0.005,0.0098
+Without Group 9,Random survival forest minus Oldest first,top10,0.0177,-0.0181,0.0443
+Without Group 9,"Random survival forest minus Team's past late rate, then oldest",c_index,0.0229,0.0128,0.0333
+Without Group 9,"Random survival forest minus Team's past late rate, then oldest",top10,0.0402,-0.0165,0.082
+Without Group 9,Random survival forest minus Cox,c_index,0.0201,0.0135,0.0264
+Without Group 9,Random survival forest minus Cox,top10,0.0588,0.0234,0.0846
+Without Group 9,Random survival forest minus Cox,brier,-0.0091,-0.0113,-0.0068
+Without Group 9,Random survival forest minus Cox,count_error,-1.3838,-4.0707,0.4205
+Without Group 9,Random survival forest minus Gradient boosting classifier,c_index,-0.0038,-0.0082,0.0005
+Without Group 9,Random survival forest minus Gradient boosting classifier,top10,0.024,-0.0027,0.0425
+Without Group 9,Random survival forest minus Gradient boosting classifier,brier,0.0002,-0.0011,0.0016
+Without Group 9,Random survival forest minus Gradient boosting classifier,count_error,-1.9518,-4.0102,-0.0746
+Without Group 9,Random survival forest minus Kaplan–Meier by age,c_index,0.0061,-0.0011,0.0136
+Without Group 9,Random survival forest minus Kaplan–Meier by age,top10,0.0126,-0.0197,0.0415
+Without Group 9,Random survival forest minus Kaplan–Meier by age,brier,-0.007,-0.0099,-0.0042
+Without Group 9,Random survival forest minus Kaplan–Meier by age,count_error,-1.3533,-6.0177,2.8961
+Without Group 9,Kaplan–Meier by age minus Past late rate by age band,c_index,0.0172,0.0104,0.0235
+Without Group 9,Kaplan–Meier by age minus Past late rate by age band,top10,0.0401,-0.0066,0.0836
+Without Group 9,Kaplan–Meier by age minus Past late rate by age band,brier,-0.0106,-0.0141,-0.0068
+Without Group 9,Kaplan–Meier by age minus Past late rate by age band,count_error,0.0375,-10.811,6.2194
+Without Group 9,Kaplan–Meier by age minus Regression on resolved tickets,c_index,0.0545,0.04,0.0693
+Without Group 9,Kaplan–Meier by age minus Regression on resolved tickets,top10,0.0817,0.0459,0.123
+Without Group 9,Kaplan–Meier by age minus Regression on resolved tickets,brier,-0.059,-0.068,-0.0496
+Without Group 9,Kaplan–Meier by age minus Regression on resolved tickets,count_error,-157.8293,-180.6177,-130.3666

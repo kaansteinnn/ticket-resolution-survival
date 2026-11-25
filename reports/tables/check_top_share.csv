@@ -1,0 +1,9 @@
+method,top5,top10,top20
+Oldest first,0.8676,0.876,0.893
+"Team's past late rate, then oldest",0.967,0.9716,0.9622
+Past late rate by age band,0.9055,0.9099,0.8841
+Regression on resolved tickets,0.9128,0.9452,0.9317
+Kaplan–Meier by age,0.8644,0.8775,0.8933
+Cox,0.9705,0.9815,0.9728
+Random survival forest,0.985,0.9858,0.9618
+Gradient boosting classifier,0.9755,0.9848,0.9704
